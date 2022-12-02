@@ -21,5 +21,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("Max: {:?}", elves.iter().max());
 
+    elves.sort();
+    let (_, right) = elves.split_at(elves.len() - 3);
+
+    let maxs: u32 = right.iter().sum();
+
+    println!("Max 3: {:?}", maxs);
+
     Ok(())
 }
