@@ -9,7 +9,9 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
 
 ## Completion
 
-- [x] Day 1: Calorie Counting
+- [ ] Day 1: Calorie Counting
+    - [x] Part One
+    - [ ] Part Two
 - [x] Day 2: Rock Paper Scissors
 - [x] Day 3: Rucksack Reorganization
 - [x] Day 4: Camp Cleanup
