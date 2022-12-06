@@ -16,6 +16,7 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
 - [x] Day 3: Rucksack Reorganization
 - [x] Day 4: Camp Cleanup
 - [x] Day 5: Supply Stacks
+- [x] Day 6: Tuning Trouble
 - [ ] Day x: *title*
 ...
 
