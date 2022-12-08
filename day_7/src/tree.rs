@@ -1,34 +1,89 @@
+use std::{
+    error::Error,
+    fmt::{Debug, Display},
+    path::Components,
+};
+
+#[derive(Debug)]
 pub struct Tree {
-    childs: Vec<Box<dyn Node>>,
+    root: Box<dyn Node>,
+}
+
+impl Display for Tree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.root)
+    }
+}
+
+impl Node for Tree {
+    fn name(&self) -> String {
+        String::from("/")
+    }
+
+    fn size(&self) -> usize {
+        self.root.size()
+    }
+
+    fn get_type(&self) -> NodeType {
+        NodeType::DIRECTORY
+    }
+
+    fn add_child(&mut self, _: Box<dyn Node>) -> Result<(), TreeError> {
+        Err(TreeError::new())
+    }
+
+    fn add(&mut self, components: &mut Components, node: Box<dyn Node>) -> Result<(), TreeError> {
+        components.next(); // Skip "/"
+        self.root.add(components, node)
+    }
 }
 
 impl Tree {
     pub fn new() -> Self {
-        Tree { childs: Vec::new() }
-    }
-
-    pub fn add(path: String, node: Box<dyn Node>) -> Result<(), ()> {
-        // TODO: Implement add logic
-        // node correspond to the full path for a node.
-        // Example:
-        // For a file: path = "/a/", node = File::new(...)
-        // For a dir: path = "/my/sub/", node = Dir::new(...)
-        Ok(())
+        Tree {
+            root: Box::new(Dir::new(String::from("/"))),
+        }
     }
 }
 
+#[derive(Debug)]
+pub struct TreeError {}
+
+impl TreeError {
+    pub fn new() -> Self {
+        TreeError {}
+    }
+}
+
+impl Display for TreeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", 0)
+    }
+}
+
+impl Error for TreeError {}
+
+#[derive(Debug)]
 pub enum NodeType {
     DIRECTORY,
     FILE,
 }
 
-pub trait Node {
+pub trait Node: Display {
     fn name(&self) -> String;
     fn size(&self) -> usize;
     fn get_type(&self) -> NodeType;
-    fn add_child(&mut self, child: Box<dyn Node>) -> Result<(), ()>;
+    fn add(&mut self, components: &mut Components, node: Box<dyn Node>) -> Result<(), TreeError>;
+    fn add_child(&mut self, child: Box<dyn Node>) -> Result<(), TreeError>;
 }
 
+impl Debug for dyn Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Node{{{}}}", self.name())
+    }
+}
+
+#[derive(Debug)]
 pub struct Dir {
     name: String,
     childs: Vec<Box<dyn Node>>,
@@ -40,6 +95,18 @@ impl Dir {
             name,
             childs: Vec::new(),
         }
+    }
+}
+
+impl Display for Dir {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Dir {}\n", self.name)?;
+
+        for child in &self.childs {
+            write!(f, "{}", child)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -62,11 +129,29 @@ impl Node for Dir {
         NodeType::DIRECTORY
     }
 
-    fn add_child(&mut self, child: Box<dyn Node>) -> Result<(), ()> {
-        Ok(())
+    fn add(&mut self, components: &mut Components, node: Box<dyn Node>) -> Result<(), TreeError> {
+        let component = components.next();
+
+        match component {
+            Some(path) => {
+                for child in &mut self.childs {
+                    if child.name() == path.as_os_str().to_str().unwrap() {
+                        return child.add(components, node);
+                    }
+                }
+
+                Err(TreeError::new())
+            }
+            None => self.add_child(node),
+        }
+    }
+
+    fn add_child(&mut self, child: Box<dyn Node>) -> Result<(), TreeError> {
+        Ok(self.childs.push(child))
     }
 }
 
+#[derive(Debug)]
 pub struct File {
     name: String,
     size: usize,
@@ -75,6 +160,12 @@ pub struct File {
 impl File {
     pub fn new(name: String, size: usize) -> Self {
         File { name, size }
+    }
+}
+
+impl Display for File {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "File {}\n", self.name)
     }
 }
 
@@ -91,7 +182,11 @@ impl Node for File {
         NodeType::FILE
     }
 
-    fn add_child(&mut self, child: Box<dyn Node>) -> Result<(), ()> {
-        Err(())
+    fn add(&mut self, _: &mut Components, _: Box<dyn Node>) -> Result<(), TreeError> {
+        Err(TreeError::new())
+    }
+
+    fn add_child(&mut self, _: Box<dyn Node>) -> Result<(), TreeError> {
+        Err(TreeError::new())
     }
 }
