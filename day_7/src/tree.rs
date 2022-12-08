@@ -38,7 +38,7 @@ impl Node for Tree {
     }
 
     fn visit(&self, visitor: &mut dyn TreeVisitor) {
-        visitor.visit(self.root)
+        visitor.visit(&self.root)
     }
 }
 
@@ -175,7 +175,7 @@ impl File {
 
 impl Display for File {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "File {}\n", self.name)
+        write!(f, "File {}", self.name)
     }
 }
 
@@ -205,7 +205,7 @@ impl Node for File {
     }
 }
 
-struct TreeDisplay {
+pub struct TreeDisplay {
     indent: u32,
 }
 
@@ -213,28 +213,45 @@ impl TreeDisplay {
     pub fn new() -> Self {
         TreeDisplay { indent: 0 }
     }
+
+    pub fn print_ident(&self) {
+        for _ in 0..self.indent {
+            print!(" ");
+        }
+    }
 }
 
-trait TreeVisitor {
-    fn visit(&mut self, t: Box<dyn Node>);
+pub trait TreeVisitor {
+    fn visit_tree(&mut self, t: &Tree);
+    fn visit(&mut self, t: &Box<dyn Node>);
     fn visit_file(&mut self, f: &File);
     fn visit_dir(&mut self, d: &Dir);
 }
 
 impl TreeVisitor for TreeDisplay {
-    fn visit(&mut self, t: Box<dyn Node>) {
+    fn visit_tree(&mut self, t: &Tree) {
+        self.visit(&t.root)
+    }
+
+    fn visit(&mut self, t: &Box<dyn Node>) {
         t.visit(self)
     }
 
     fn visit_file(&mut self, f: &File) {
+        self.print_ident();
         println!("{}", f);
     }
 
     fn visit_dir(&mut self, d: &Dir) {
+        self.print_ident();
         println!("{}", d);
+
+        self.indent += 1;
 
         for child in &d.childs {
             self.visit(child);
         }
+
+        self.indent -= 1;
     }
 }

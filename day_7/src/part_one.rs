@@ -3,7 +3,7 @@ use std::io;
 use std::path::PathBuf;
 
 use crate::cwd::CurrentWorkingDirectory;
-use crate::tree::{Dir, File, Node, Tree};
+use crate::tree::{Dir, File, Node, Tree, TreeDisplay, TreeVisitor};
 
 pub fn main_p1() -> Result<(), Box<dyn Error>> {
     let lines = io::stdin().lines();
@@ -44,8 +44,8 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    println!("Printing File System:");
-    println!("{}", fs);
+    let mut visitor = TreeDisplay::new();
+    visitor.visit_tree(&fs);
 
     Ok(())
 }
