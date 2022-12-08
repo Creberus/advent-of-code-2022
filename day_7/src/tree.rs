@@ -36,6 +36,10 @@ impl Node for Tree {
         components.next(); // Skip "/"
         self.root.add(components, node)
     }
+
+    fn visit(&self, visitor: &mut dyn TreeVisitor) {
+        visitor.visit(self.root)
+    }
 }
 
 impl Tree {
@@ -75,6 +79,7 @@ pub trait Node: Display {
     fn get_type(&self) -> NodeType;
     fn add(&mut self, components: &mut Components, node: Box<dyn Node>) -> Result<(), TreeError>;
     fn add_child(&mut self, child: Box<dyn Node>) -> Result<(), TreeError>;
+    fn visit(&self, visitor: &mut dyn TreeVisitor);
 }
 
 impl Debug for dyn Node {
@@ -100,11 +105,12 @@ impl Dir {
 
 impl Display for Dir {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Dir {}\n", self.name)?;
+        write!(f, "Dir {}", self.name)?;
 
+        /*
         for child in &self.childs {
             write!(f, "{}", child)?;
-        }
+        }*/
 
         Ok(())
     }
@@ -149,6 +155,10 @@ impl Node for Dir {
     fn add_child(&mut self, child: Box<dyn Node>) -> Result<(), TreeError> {
         Ok(self.childs.push(child))
     }
+
+    fn visit(&self, visitor: &mut dyn TreeVisitor) {
+        visitor.visit_dir(self)
+    }
 }
 
 #[derive(Debug)]
@@ -188,5 +198,43 @@ impl Node for File {
 
     fn add_child(&mut self, _: Box<dyn Node>) -> Result<(), TreeError> {
         Err(TreeError::new())
+    }
+
+    fn visit(&self, visitor: &mut dyn TreeVisitor) {
+        visitor.visit_file(self)
+    }
+}
+
+struct TreeDisplay {
+    indent: u32,
+}
+
+impl TreeDisplay {
+    pub fn new() -> Self {
+        TreeDisplay { indent: 0 }
+    }
+}
+
+trait TreeVisitor {
+    fn visit(&mut self, t: Box<dyn Node>);
+    fn visit_file(&mut self, f: &File);
+    fn visit_dir(&mut self, d: &Dir);
+}
+
+impl TreeVisitor for TreeDisplay {
+    fn visit(&mut self, t: Box<dyn Node>) {
+        t.visit(self)
+    }
+
+    fn visit_file(&mut self, f: &File) {
+        println!("{}", f);
+    }
+
+    fn visit_dir(&mut self, d: &Dir) {
+        println!("{}", d);
+
+        for child in &d.childs {
+            self.visit(child);
+        }
     }
 }
