@@ -7,7 +7,7 @@ use crate::tree::{
     Dir, File, Node, Tree, TreeDisplay, TreeMaxDirSize, TreeSizeVisitor, TreeVisitor,
 };
 
-pub fn main_p1() -> Result<(), Box<dyn Error>> {
+pub fn main_p2() -> Result<(), Box<dyn Error>> {
     let lines = io::stdin().lines();
     let mut cwd = CurrentWorkingDirectory::new();
     let mut fs = Tree::new();
@@ -49,10 +49,18 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
     let mut visitor = TreeDisplay::new();
     visitor.visit_tree(&fs);
 
-    let mut size_visitor = TreeMaxDirSize::new(100_000);
-    size_visitor.visit_tree(&fs);
+    let mut size_visitor = TreeMaxDirSize::new(0);
+    let total_size = size_visitor.visit_tree(&fs);
 
-    println!("Max directory size: {}", size_visitor.size);
+    println!("Total size: {}", total_size);
+    let free_size = 70_000_000 - total_size;
+    println!("Free size: {}", free_size);
+    let size_to_free = 30_000_000 - free_size;
+    println!("Size to free: {}", size_to_free);
+
+    size_visitor = TreeMaxDirSize::new(size_to_free);
+    size_visitor.visit_tree(&fs);
+    println!("Size freed: {}", size_visitor.dir_size);
 
     Ok(())
 }

@@ -269,15 +269,19 @@ impl TreeVisitor for TreeDisplay {
     }
 }
 
-const MAX_DIR_SIZE: usize = 100_000;
-
 pub struct TreeMaxDirSize {
     pub size: usize,
+    max_size: usize,
+    pub dir_size: usize,
 }
 
 impl TreeMaxDirSize {
-    pub fn new() -> Self {
-        TreeMaxDirSize { size: 0 }
+    pub fn new(max_size: usize) -> Self {
+        TreeMaxDirSize {
+            size: 0,
+            max_size,
+            dir_size: usize::MAX,
+        }
     }
 }
 
@@ -308,7 +312,11 @@ impl TreeSizeVisitor for TreeMaxDirSize {
             size += self.visit(child);
         }
 
-        if size < MAX_DIR_SIZE {
+        if size < self.dir_size && size >= self.max_size {
+            self.dir_size = size;
+        }
+
+        if size < self.max_size {
             self.size += size;
         }
 
