@@ -18,9 +18,7 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
 - [x] Day 5: Supply Stacks
 - [x] Day 6: Tuning Trouble
 - [x] Day 7: No Space Left On Device
-- [ ] Day 8: Treetop Tree House
-    - [ ] Part One
-    - [ ] Part Two
+- [x] Day 8: Treetop Tree House
 - [ ] Day x: *title*
 ...
 
