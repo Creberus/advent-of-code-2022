@@ -40,6 +40,10 @@ impl Node for Tree {
     fn visit(&self, visitor: &mut dyn TreeVisitor) {
         visitor.visit(&self.root)
     }
+
+    fn visit_size(&self, visitor: &mut dyn TreeSizeVisitor) -> usize {
+        visitor.visit(&self.root)
+    }
 }
 
 impl Tree {
@@ -80,6 +84,7 @@ pub trait Node: Display {
     fn add(&mut self, components: &mut Components, node: Box<dyn Node>) -> Result<(), TreeError>;
     fn add_child(&mut self, child: Box<dyn Node>) -> Result<(), TreeError>;
     fn visit(&self, visitor: &mut dyn TreeVisitor);
+    fn visit_size(&self, visitor: &mut dyn TreeSizeVisitor) -> usize;
 }
 
 impl Debug for dyn Node {
@@ -159,6 +164,10 @@ impl Node for Dir {
     fn visit(&self, visitor: &mut dyn TreeVisitor) {
         visitor.visit_dir(self)
     }
+
+    fn visit_size(&self, visitor: &mut dyn TreeSizeVisitor) -> usize {
+        visitor.visit_dir(self)
+    }
 }
 
 #[derive(Debug)]
@@ -201,6 +210,10 @@ impl Node for File {
     }
 
     fn visit(&self, visitor: &mut dyn TreeVisitor) {
+        visitor.visit_file(self)
+    }
+
+    fn visit_size(&self, visitor: &mut dyn TreeSizeVisitor) -> usize {
         visitor.visit_file(self)
     }
 }
@@ -253,5 +266,52 @@ impl TreeVisitor for TreeDisplay {
         }
 
         self.indent -= 1;
+    }
+}
+
+const MAX_DIR_SIZE: usize = 100_000;
+
+pub struct TreeMaxDirSize {
+    pub size: usize,
+}
+
+impl TreeMaxDirSize {
+    pub fn new() -> Self {
+        TreeMaxDirSize { size: 0 }
+    }
+}
+
+pub trait TreeSizeVisitor {
+    fn visit_tree(&mut self, t: &Tree) -> usize;
+    fn visit(&mut self, t: &Box<dyn Node>) -> usize;
+    fn visit_file(&mut self, f: &File) -> usize;
+    fn visit_dir(&mut self, d: &Dir) -> usize;
+}
+
+impl TreeSizeVisitor for TreeMaxDirSize {
+    fn visit_tree(&mut self, t: &Tree) -> usize {
+        self.visit(&t.root)
+    }
+
+    fn visit(&mut self, t: &Box<dyn Node>) -> usize {
+        t.visit_size(self)
+    }
+
+    fn visit_file(&mut self, f: &File) -> usize {
+        f.size()
+    }
+
+    fn visit_dir(&mut self, d: &Dir) -> usize {
+        let mut size: usize = 0;
+
+        for child in &d.childs {
+            size += self.visit(child);
+        }
+
+        if size < MAX_DIR_SIZE {
+            self.size += size;
+        }
+
+        size
     }
 }

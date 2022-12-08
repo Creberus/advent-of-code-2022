@@ -3,7 +3,9 @@ use std::io;
 use std::path::PathBuf;
 
 use crate::cwd::CurrentWorkingDirectory;
-use crate::tree::{Dir, File, Node, Tree, TreeDisplay, TreeVisitor};
+use crate::tree::{
+    Dir, File, Node, Tree, TreeDisplay, TreeMaxDirSize, TreeSizeVisitor, TreeVisitor,
+};
 
 pub fn main_p1() -> Result<(), Box<dyn Error>> {
     let lines = io::stdin().lines();
@@ -46,6 +48,11 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
 
     let mut visitor = TreeDisplay::new();
     visitor.visit_tree(&fs);
+
+    let mut size_visitor = TreeMaxDirSize::new();
+    size_visitor.visit_tree(&fs);
+
+    println!("Max directory size: {}", size_visitor.size);
 
     Ok(())
 }
