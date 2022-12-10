@@ -55,7 +55,7 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
                 visited.insert(tail.clone());
             }
 
-            assert_eq!(head.distance(&tail), 1);
+            assert!(head.distance(&tail) < 2);
         }
     }
 
