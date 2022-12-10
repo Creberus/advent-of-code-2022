@@ -9,9 +9,7 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
 
 ## Completion
 
-- [ ] Day 1: Calorie Counting
-    - [x] Part One
-    - [ ] Part Two
+- [x] Day 1: Calorie Counting
 - [x] Day 2: Rock Paper Scissors
 - [x] Day 3: Rucksack Reorganization
 - [x] Day 4: Camp Cleanup
@@ -20,9 +18,7 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
 - [x] Day 7: No Space Left On Device
 - [x] Day 8: Treetop Tree House
 - [x] Day 9: Rope Bridge
-- [ ] Day 10: Cathode-Ray Tube
-    - [ ] Part One
-    - [ ] Part Two
+- [x] Day 10: Cathode-Ray Tube
 - [ ] Day x: *title*
 ...
 
