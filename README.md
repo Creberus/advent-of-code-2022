@@ -19,9 +19,7 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
 - [x] Day 6: Tuning Trouble
 - [x] Day 7: No Space Left On Device
 - [x] Day 8: Treetop Tree House
-- [ ] Day 9: Rope Bridge
-    - [ ] Part One
-    - [ ] Part Two
+- [x] Day 9: Rope Bridge
 - [ ] Day 10: Cathode-Ray Tube
     - [ ] Part One
     - [ ] Part Two
