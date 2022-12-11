@@ -1,10 +1,12 @@
 use std::collections::VecDeque;
 use std::error::Error;
+use std::fmt::Display;
 use std::io;
 
 pub fn main_p1() -> Result<(), Box<dyn Error>> {
     let mut lines = io::stdin().lines();
 
+    let mut id: usize = 0;
     let mut monkeys = Vec::<Monkey>::new();
 
     loop {
@@ -14,7 +16,7 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         }
 
         // 1. Create the monkey
-        let mut monkey = Monkey::new();
+        let mut monkey = Monkey::new(id);
 
         // 2. Add starting items to the monkey
         let line = lines.next().unwrap().unwrap();
@@ -43,40 +45,88 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         let line = lines.next().unwrap().unwrap();
         let throw = line.split(':').last().unwrap();
         let throw: u32 = throw.split(' ').last().unwrap().parse().unwrap();
-        monkey.true_monkey(throw);
+        *monkey.true_monkey_mut() = throw;
 
         // 5. Set monkey to throw when false
         let line = lines.next().unwrap().unwrap();
         let throw = line.split(':').last().unwrap();
         let throw: u32 = throw.split(' ').last().unwrap().parse().unwrap();
-        monkey.false_monkey(throw);
+        *monkey.false_monkey_mut() = throw;
 
         monkeys.push(monkey);
 
         lines.next();
+
+        id += 1;
     }
+
+    for round in 0..20 {
+        println!("Starting round {}", round);
+
+        for index in 0..monkeys.len() {
+            let mut to_throw = Vec::<(u32, u32)>::new();
+            let monkey = monkeys.get_mut(index).unwrap();
+
+            // 1. Perform the monkey steps for all the items
+            while monkey.has_item() {
+                monkey.inspect();
+                monkey.bored();
+                let monkey_to_throw = if monkey.is_divisible() {
+                    monkey.true_monkey()
+                } else {
+                    monkey.false_monkey()
+                };
+                let item = monkey.throw();
+
+                // 2. We need to store the actions to do in order to avoid 2 mutable borrows
+                to_throw.push((monkey_to_throw, item));
+            }
+
+            // 3. We finally throw all the items at once
+            for throw in to_throw {
+                monkeys[throw.0 as usize].push(throw.1);
+            }
+        }
+
+        //monkeys.iter().for_each(|m| println!("{}", m));
+    }
+
+    monkeys.sort_by_key(|m| m.inspected());
+    let mut max = monkeys.iter().rev();
+
+    let monkey_business = max.next().unwrap().inspected() * max.next().unwrap().inspected();
+
+    println!("Monkey business: {}", monkey_business);
 
     Ok(())
 }
 
 #[derive(Debug)]
 struct Monkey {
+    id: usize,
     items: VecDeque<u32>,
     operation: Operation,
     divisible: u32,
     true_monkey: u32,
     false_monkey: u32,
+    inspected: u32,
 }
 
 impl Monkey {
-    fn new() -> Self {
+    fn new(id: usize) -> Self {
         Monkey {
+            id,
             items: VecDeque::new(),
             operation: Operation::default(),
             divisible: 0,
             true_monkey: 0,
             false_monkey: 0,
+            inspected: 0,
         }
+    }
+
+    fn id(&self) -> usize {
+        self.id
     }
 
     fn push(&mut self, item: u32) {
@@ -91,20 +141,75 @@ impl Monkey {
         self.divisible = divisible;
     }
 
-    fn true_monkey(&mut self, monkey: u32) {
-        self.true_monkey = monkey;
+    fn true_monkey(&self) -> u32 {
+        self.true_monkey
     }
 
-    fn false_monkey(&mut self, monkey: u32) {
-        self.false_monkey = monkey;
+    fn true_monkey_mut(&mut self) -> &mut u32 {
+        &mut self.true_monkey
     }
 
-    fn throw(&mut self, monkey: &mut Self) {
-        monkey.push(self.items.pop_front().unwrap());
+    fn false_monkey(&self) -> u32 {
+        self.false_monkey
+    }
+
+    fn false_monkey_mut(&mut self) -> &mut u32 {
+        &mut self.false_monkey
+    }
+
+    fn has_item(&self) -> bool {
+        !self.items.is_empty()
+    }
+
+    fn inspect(&mut self) {
+        self.inspected += 1;
+
+        match self.items.front_mut() {
+            Some(item) => {
+                let value = if let Value::Number(n) = self.operation.value() {
+                    n
+                } else {
+                    *item
+                };
+
+                match self.operation.op() {
+                    Operator::Add => *item += value,
+                    Operator::Mul => *item *= value,
+                }
+            }
+            None => panic!("Monkey has no items left."),
+        }
+    }
+
+    fn bored(&mut self) {
+        match self.items.front_mut() {
+            Some(item) => {
+                *item /= 3;
+            }
+            None => panic!("Monkey has no items left."),
+        }
+    }
+
+    fn is_divisible(&self) -> bool {
+        self.items.front().unwrap() % self.divisible == 0
+    }
+
+    fn throw(&mut self) -> u32 {
+        self.items.pop_front().unwrap()
+    }
+
+    fn inspected(&self) -> u32 {
+        self.inspected
     }
 }
 
-#[derive(Debug)]
+impl Display for Monkey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Monkey {}: {:?}", self.id, self.items)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 struct Operation {
     op: Operator,
     val: Value,
@@ -113,6 +218,14 @@ struct Operation {
 impl Operation {
     fn new(op: Operator, val: Value) -> Self {
         Operation { op, val }
+    }
+
+    fn op(&self) -> Operator {
+        self.op
+    }
+
+    fn value(&self) -> Value {
+        self.val
     }
 }
 
@@ -125,7 +238,7 @@ impl Default for Operation {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum Operator {
     Add,
     Mul,
@@ -141,7 +254,7 @@ impl From<&str> for Operator {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum Value {
     Number(u32),
     Old,
