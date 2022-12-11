@@ -19,6 +19,9 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
 - [x] Day 8: Treetop Tree House
 - [x] Day 9: Rope Bridge
 - [x] Day 10: Cathode-Ray Tube
+- [ ] Day 11: Monkey in the Middle
+    - [ ] Part One
+    - [ ] Part Two
 - [ ] Day x: *title*
 ...
 
