@@ -60,6 +60,8 @@ pub fn main_p2() -> Result<(), Box<dyn Error>> {
         id += 1;
     }
 
+    let divisor = monkeys.iter().fold(1, |acc, m| acc * m.divisor());
+
     for round in 0..10000 {
         println!("Starting round {}", round);
 
@@ -76,10 +78,10 @@ pub fn main_p2() -> Result<(), Box<dyn Error>> {
                 } else {
                     monkey.false_monkey()
                 };
-                let item = monkey.throw();
+                let item = monkey.throw() % divisor;
 
                 // 2. We need to store the actions to do in order to avoid 2 mutable borrows
-                to_throw.push((monkey_to_throw, item / 6));
+                to_throw.push((monkey_to_throw, item));
             }
 
             // 3. We finally throw all the items at once
@@ -200,6 +202,10 @@ impl Monkey {
 
     fn inspected(&self) -> u64 {
         self.inspected
+    }
+
+    fn divisor(&self) -> u64 {
+        self.divisible
     }
 }
 
