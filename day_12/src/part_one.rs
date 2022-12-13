@@ -103,6 +103,7 @@ trait Visitor {
 struct FindShortestPath<'a> {
     map: &'a HeightMap,
     visited: Vec<Vec<bool>>,
+    predecessor: Vec<Vec<&'a HeightNode>>,
 }
 
 impl<'a> FindShortestPath<'a> {
@@ -116,7 +117,20 @@ impl<'a> FindShortestPath<'a> {
             }
         }
 
-        FindShortestPath { map, visited }
+        let mut predecessor = Vec::new();
+
+        for row in 0..map.height() {
+            predecessor.push(Vec::new());
+            for _ in 0..map.width() {
+                predecessor[row].push(map.get(0, 0).unwrap());
+            }
+        }
+
+        FindShortestPath {
+            map,
+            visited,
+            predecessor,
+        }
     }
 }
 
@@ -124,7 +138,7 @@ impl<'a> Visitor for FindShortestPath<'a> {
     fn visit(&mut self, start: (usize, usize)) -> Result<u32, ()> {
         let mut q = VecDeque::<&HeightNode>::new();
         let node = self.map.get(start.0, start.1).unwrap();
-        let mut depth = 1;
+        let mut depth = 0;
         let mut node_left = 1;
 
         self.visited[node.y()][node.x()] = true;
@@ -147,10 +161,11 @@ impl<'a> Visitor for FindShortestPath<'a> {
             if node.y() != 0 {
                 let up = (node.x(), node.y() - 1);
                 if let Some(n) = self.map.get(up.0, up.1) {
-                    if !self.visited[up.1][up.0]
-                        && ((value as u32) + 1 >= (n.value() as u32) || n.value() == 'E')
-                    {
+                    let n_value = if n.value() == 'E' { 'z' } else { n.value() };
+
+                    if !self.visited[up.1][up.0] && ((value as u32) + 1 >= (n_value as u32)) {
                         self.visited[up.1][up.0] = true;
+                        self.predecessor[up.1][up.0] = node;
                         q.push_back(&n);
                     }
                 }
@@ -158,10 +173,10 @@ impl<'a> Visitor for FindShortestPath<'a> {
             // Check Right node
             let right = (node.x() + 1, node.y());
             if let Some(n) = self.map.get(right.0, right.1) {
-                if !self.visited[right.1][right.0]
-                    && ((value as u32) + 1 >= (n.value() as u32) || n.value() == 'E')
-                {
+                let n_value = if n.value() == 'E' { 'z' } else { n.value() };
+                if !self.visited[right.1][right.0] && ((value as u32) + 1 >= (n_value as u32)) {
                     self.visited[right.1][right.0] = true;
+                    self.predecessor[right.1][right.0] = node;
                     q.push_back(&n);
                 }
             }
@@ -169,10 +184,10 @@ impl<'a> Visitor for FindShortestPath<'a> {
             // Check Down node
             let down = (node.x(), node.y() + 1);
             if let Some(n) = self.map.get(down.0, down.1) {
-                if !self.visited[down.1][down.0]
-                    && ((value as u32) + 1 >= (n.value() as u32) || n.value() == 'E')
-                {
+                let n_value = if n.value() == 'E' { 'z' } else { n.value() };
+                if !self.visited[down.1][down.0] && ((value as u32) + 1 >= (n_value as u32)) {
                     self.visited[down.1][down.0] = true;
+                    self.predecessor[down.1][down.0] = node;
                     q.push_back(&n);
                 }
             }
@@ -180,10 +195,10 @@ impl<'a> Visitor for FindShortestPath<'a> {
             if node.x() != 0 {
                 let left = (node.x() - 1, node.y());
                 if let Some(n) = self.map.get(left.0, left.1) {
-                    if !self.visited[left.1][left.0]
-                        && ((value as u32) + 1 >= (n.value() as u32) || n.value() == 'E')
-                    {
+                    let n_value = if n.value() == 'E' { 'z' } else { n.value() };
+                    if !self.visited[left.1][left.0] && ((value as u32) + 1 >= (n_value as u32)) {
                         self.visited[left.1][left.0] = true;
+                        self.predecessor[left.1][left.0] = node;
                         q.push_back(&n);
                     }
                 }
@@ -227,6 +242,71 @@ mod tests {
         let path = visitor.visit((0, 0));
 
         println!("{:?}", visitor);
-        assert_eq!(path, Ok(27));
+        assert_eq!(path, Ok(26));
+    }
+
+    #[test]
+    fn simple() {
+        let mut mat = Vec::<Vec<HeightNode>>::new();
+
+        mat.push(Vec::new());
+        mat.push(Vec::new());
+        mat.push(Vec::new());
+        mat.push(Vec::new());
+        mat.push(Vec::new());
+
+        mat[0].push(HeightNode::new(0, 0, 'S'));
+        mat[0].push(HeightNode::new(1, 0, 'a'));
+        mat[0].push(HeightNode::new(2, 0, 'b'));
+        mat[0].push(HeightNode::new(3, 0, 'q'));
+        mat[0].push(HeightNode::new(4, 0, 'p'));
+        mat[0].push(HeightNode::new(5, 0, 'o'));
+        mat[0].push(HeightNode::new(6, 0, 'n'));
+        mat[0].push(HeightNode::new(7, 0, 'm'));
+
+        mat[1].push(HeightNode::new(0, 1, 'a'));
+        mat[1].push(HeightNode::new(1, 1, 'b'));
+        mat[1].push(HeightNode::new(2, 1, 'c'));
+        mat[1].push(HeightNode::new(3, 1, 'r'));
+        mat[1].push(HeightNode::new(4, 1, 'y'));
+        mat[1].push(HeightNode::new(5, 1, 'x'));
+        mat[1].push(HeightNode::new(6, 1, 'x'));
+        mat[1].push(HeightNode::new(7, 1, 'l'));
+
+        mat[2].push(HeightNode::new(0, 2, 'a'));
+        mat[2].push(HeightNode::new(1, 2, 'c'));
+        mat[2].push(HeightNode::new(2, 2, 'c'));
+        mat[2].push(HeightNode::new(3, 2, 's'));
+        mat[2].push(HeightNode::new(4, 2, 'z'));
+        mat[2].push(HeightNode::new(5, 2, 'E'));
+        mat[2].push(HeightNode::new(6, 2, 'x'));
+        mat[2].push(HeightNode::new(7, 2, 'k'));
+
+        mat[3].push(HeightNode::new(0, 3, 'a'));
+        mat[3].push(HeightNode::new(1, 3, 'c'));
+        mat[3].push(HeightNode::new(2, 3, 'c'));
+        mat[3].push(HeightNode::new(3, 3, 't'));
+        mat[3].push(HeightNode::new(4, 3, 'u'));
+        mat[3].push(HeightNode::new(5, 3, 'v'));
+        mat[3].push(HeightNode::new(6, 3, 'w'));
+        mat[3].push(HeightNode::new(7, 3, 'j'));
+
+        mat[4].push(HeightNode::new(0, 4, 'a'));
+        mat[4].push(HeightNode::new(1, 4, 'b'));
+        mat[4].push(HeightNode::new(2, 4, 'd'));
+        mat[4].push(HeightNode::new(3, 4, 'e'));
+        mat[4].push(HeightNode::new(4, 4, 'f'));
+        mat[4].push(HeightNode::new(5, 4, 'g'));
+        mat[4].push(HeightNode::new(6, 4, 'h'));
+        mat[4].push(HeightNode::new(7, 4, 'i'));
+
+        let map = HeightMap::new(mat);
+
+        let mut visitor = FindShortestPath::new(&map);
+
+        let path = visitor.visit((0, 0));
+
+        println!("{:?}", visitor);
+        assert_eq!(path, Ok(31));
     }
 }
