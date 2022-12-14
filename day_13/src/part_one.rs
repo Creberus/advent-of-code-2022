@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::io;
 use std::str::Chars;
 
@@ -23,7 +23,22 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         lines.next(); // Empty line between 2 packets
     }
 
-    println!("{:?}", packets);
+    let mut results = Vec::<usize>::new();
+    let mut index = 1;
+
+    for pair in packets {
+        println!("{}", pair.0);
+        println!("{}", pair.1);
+        let result = pair.0.compare(&pair.1);
+        println!("{}", result);
+        if result == -1 {
+            results.push(index);
+        }
+
+        index += 1;
+    }
+
+    println!("Sum: {}", results.iter().sum::<usize>());
 
     Ok(())
 }
@@ -36,6 +51,7 @@ enum Node {
 
 impl Node {
     fn parse(input: &str) -> Self {
+        //TODO: Changer input en Iterator<Chars>
         let mut childs = Vec::new();
 
         let mut chars = input.chars().enumerate();
@@ -50,12 +66,14 @@ impl Node {
 
             if c == '[' {
                 let child = Node::parse(&input[idx + 1..]);
+                //TODO: Need to advance the iterator by the number of char parsed
                 childs.push(child);
             } else if c == ',' {
                 continue;
             } else if c == ']' {
                 break;
             } else {
+                //TODO: While iterator not empty, ',', ']', on graille le chiffre
                 let end = chars.position(|c| c.1 == ',' || c.1 == ']').unwrap();
                 let child = input[idx..idx + end + 1].parse().unwrap();
                 childs.push(Node::Number(child));
@@ -63,6 +81,62 @@ impl Node {
         }
 
         Node::Array(childs)
+    }
+}
+
+fn compare(a: &Node, b: &Node) -> i32 {
+    match (a, b) {
+        (Node::Number(a), Node::Number(b)) => {
+            if a == b {
+                0
+            } else if a < b {
+                -1
+            } else {
+                1
+            }
+        }
+        (Node::Array(a), Node::Array(b)) => {
+            let mut index = 0;
+            let mut result = 0;
+
+            while result == 0 && index < a.len() && index < b.len() {
+                result = compare(&a[index], &b[index]);
+                index += 1;
+            }
+
+            if result == 0 {
+                if a.len() > b.len() {
+                    result = 1;
+                } else if a.len() < b.len() {
+                    result = -1;
+                }
+            }
+
+            result
+        }
+        (a, Node::Number(b)) => compare(a, &Node::Array(vec![Node::Number(*b)])),
+        (Node::Number(a), b) => compare(&Node::Array(vec![Node::Number(*a)]), b),
+    }
+}
+
+impl Display for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Node::Number(a) => write!(f, "{}", a),
+            Node::Array(arr) => {
+                write!(f, "[")?;
+
+                if !arr.is_empty() {
+                    write!(f, "{}", arr[0])?;
+
+                    for i in 1..arr.len() {
+                        write!(f, ",{}", arr[i])?;
+                    }
+                }
+
+                write!(f, "]")
+            }
+        }
     }
 }
 
@@ -75,6 +149,16 @@ impl Packet {
     fn parse(input: String) -> Self {
         let root = Node::parse(&input[1..input.len()]);
         Packet { root }
+    }
+
+    fn compare(&self, other: &Self) -> i32 {
+        compare(&self.root, &other.root)
+    }
+}
+
+impl Display for Packet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.root)
     }
 }
 
@@ -89,15 +173,30 @@ mod tests {
 
         let packet_one = Packet::parse(packet_one);
         let packet_two = Packet::parse(packet_two);
+
+        assert_eq!(packet_one.compare(&packet_two), 0);
     }
 
     #[test]
-    fn packets_small() {
+    fn packets_small_left() {
+        let packet_one = String::from("[4]");
+        let packet_two = String::from("[12]");
+
+        let packet_one = Packet::parse(packet_one);
+        let packet_two = Packet::parse(packet_two);
+
+        assert_eq!(packet_one.compare(&packet_two), -1);
+    }
+
+    #[test]
+    fn packets_small_right() {
         let packet_one = String::from("[42]");
         let packet_two = String::from("[12]");
 
         let packet_one = Packet::parse(packet_one);
         let packet_two = Packet::parse(packet_two);
+
+        assert_eq!(packet_one.compare(&packet_two), 1);
     }
 
     #[test]
@@ -107,5 +206,95 @@ mod tests {
 
         let packet_one = Packet::parse(packet_one);
         let packet_two = Packet::parse(packet_two);
+
+        assert_eq!(packet_one.compare(&packet_two), -1);
+    }
+
+    #[test]
+    fn example_2() {
+        let packet_one = String::from("[[1],[2,3,4]]");
+        let packet_two = String::from("[[1],4]");
+
+        let packet_one = Packet::parse(packet_one);
+        let packet_two = Packet::parse(packet_two);
+
+        assert_eq!(packet_one.compare(&packet_two), -1);
+    }
+
+    #[test]
+    fn example_3() {
+        let packet_one = String::from("[9]");
+        let packet_two = String::from("[[8,7,6]]");
+
+        let packet_one = Packet::parse(packet_one);
+        let packet_two = Packet::parse(packet_two);
+
+        assert_eq!(packet_one.compare(&packet_two), 1);
+    }
+
+    #[test]
+    fn example_4() {
+        let packet_one = String::from("[[4,4],4,4]");
+        let packet_two = String::from("[[4,4],4,4,4]");
+
+        let packet_one = Packet::parse(packet_one);
+        let packet_two = Packet::parse(packet_two);
+
+        assert_eq!(packet_one.compare(&packet_two), -1);
+    }
+
+    #[test]
+    fn example_5() {
+        let packet_one = String::from("[7,7,7,7]");
+        let packet_two = String::from("[7,7,7]");
+
+        let packet_one = Packet::parse(packet_one);
+        let packet_two = Packet::parse(packet_two);
+
+        assert_eq!(packet_one.compare(&packet_two), 1);
+    }
+
+    #[test]
+    fn example_6() {
+        let packet_one = String::from("[]");
+        let packet_two = String::from("[3]");
+
+        let packet_one = Packet::parse(packet_one);
+        let packet_two = Packet::parse(packet_two);
+
+        assert_eq!(packet_one.compare(&packet_two), -1);
+    }
+
+    #[test]
+    fn example_7() {
+        let packet_one = String::from("[[[]]]");
+        let packet_two = String::from("[[]]");
+
+        let packet_one = Packet::parse(packet_one);
+        let packet_two = Packet::parse(packet_two);
+
+        assert_eq!(packet_one.compare(&packet_two), 1);
+    }
+
+    #[test]
+    fn example_8() {
+        let packet_one = String::from("[1,[2,[3,[4,[5,6,7]]]],8,9]");
+        let packet_two = String::from("[1,[2,[3,[4,[5,6,0]]]],8,9]");
+
+        let packet_one = Packet::parse(packet_one);
+        let packet_two = Packet::parse(packet_two);
+
+        assert_eq!(packet_one.compare(&packet_two), 1);
+    }
+
+    #[test]
+    fn example_9() {
+        let packet_one = String::from("[[],[[[5,5,6,0,4],[6,0,8,2]],4],[[10,3,2,3]],[[[6]]],[[]]]");
+        let packet_two = String::from("[[],[[7,1,[],[2,1],7],[[9],0,5],[10,[7,6,3,7],[9,3],9]],[],[[[9,4,9,4],[5,1,1,5]]],[10,5,7,0,[[3,8],[],2]]]");
+
+        let packet_one = Packet::parse(packet_one);
+        let packet_two = Packet::parse(packet_two);
+
+        assert_eq!(packet_one.compare(&packet_two), -1);
     }
 }
