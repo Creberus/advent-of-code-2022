@@ -6,7 +6,7 @@ use std::str::Chars;
 pub fn main_p2() -> Result<(), Box<dyn Error>> {
     let mut lines = io::stdin().lines();
 
-    let mut packets = Vec::<(Packet, Packet)>::new();
+    let mut packets = Vec::<Packet>::new();
 
     loop {
         let mut line = lines.next();
@@ -14,31 +14,40 @@ pub fn main_p2() -> Result<(), Box<dyn Error>> {
             break; // EOF
         }
 
-        let packet_one = line.unwrap().unwrap();
-        line = lines.next();
-        let packet_two = line.unwrap().unwrap();
+        let packet = line.unwrap().unwrap();
+        packets.push((Packet::parse(packet)));
 
-        packets.push((Packet::parse(packet_one), Packet::parse(packet_two)));
+        line = lines.next();
+
+        let packet = line.unwrap().unwrap();
+        packets.push((Packet::parse(packet)));
 
         lines.next(); // Empty line between 2 packets
     }
 
-    let mut results = Vec::<usize>::new();
-    let mut index = 1;
+    packets.push(Packet::parse(String::from("[[2]]")));
+    packets.push(Packet::parse(String::from("[[6]]")));
 
-    for pair in packets {
-        println!("{}", pair.0);
-        println!("{}", pair.1);
-        let result = pair.0.compare(&pair.1);
-        println!("{}", result);
-        if result == -1 {
-            results.push(index);
-        }
+    packets.sort_by(|a, b| match a.compare(b) {
+        -1 => std::cmp::Ordering::Less,
+        0 => std::cmp::Ordering::Equal,
+        1 => std::cmp::Ordering::Greater,
+        _ => panic!("Error"),
+    });
 
-        index += 1;
-    }
+    packets.iter().for_each(|p| println!("{}", p));
 
-    println!("Sum: {}", results.iter().sum::<usize>());
+    let index_first = packets
+        .iter()
+        .position(|p| p.compare(&Packet::parse(String::from("[[2]]"))) == 0)
+        .unwrap();
+
+    let index_second = packets
+        .iter()
+        .position(|p| p.compare(&Packet::parse(String::from("[[6]]"))) == 0)
+        .unwrap();
+
+    println!("Decoder key: {}", (index_first + 1) * (index_second + 1));
 
     Ok(())
 }
