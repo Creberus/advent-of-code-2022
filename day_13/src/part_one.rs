@@ -50,23 +50,19 @@ enum Node {
 }
 
 impl Node {
-    fn parse(input: &str) -> Self {
-        //TODO: Changer input en Iterator<Chars>
+    fn parse(input: &mut Chars) -> Self {
         let mut childs = Vec::new();
 
-        let mut chars = input.chars().enumerate();
-
         loop {
-            let c = chars.next();
+            let c = input.next();
             if c.is_none() {
                 break; // End of Input
             }
 
-            let (idx, c) = c.unwrap();
+            let mut c = c.unwrap();
 
             if c == '[' {
-                let child = Node::parse(&input[idx + 1..]);
-                //TODO: Need to advance the iterator by the number of char parsed
+                let child = Node::parse(input);
                 childs.push(child);
             } else if c == ',' {
                 continue;
@@ -74,9 +70,12 @@ impl Node {
                 break;
             } else {
                 //TODO: While iterator not empty, ',', ']', on graille le chiffre
-                let end = chars.position(|c| c.1 == ',' || c.1 == ']').unwrap();
-                let child = input[idx..idx + end + 1].parse().unwrap();
-                childs.push(Node::Number(child));
+                let mut number = String::new();
+                while c.is_digit(10) {
+                    number.push(c);
+                    c = input.next().unwrap();
+                }
+                childs.push(Node::Number(number.parse().unwrap()));
             }
         }
 
@@ -147,7 +146,8 @@ struct Packet {
 
 impl Packet {
     fn parse(input: String) -> Self {
-        let root = Node::parse(&input[1..input.len()]);
+        let mut it = input[1..input.len()].chars();
+        let root = Node::parse(&mut it);
         Packet { root }
     }
 
