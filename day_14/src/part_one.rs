@@ -4,13 +4,16 @@ use std::io;
 use std::num::ParseIntError;
 
 pub fn main_p1() -> Result<(), Box<dyn Error>> {
-    let mut lines = io::stdin().lines();
+    let lines = io::stdin().lines();
 
-    loop {
-        let line = lines.next();
-        if line.is_none() {
-            break; // EOF
-        }
+    let mut paths = Vec::<Path>::new();
+
+    for line in lines {
+        let line = line.unwrap();
+
+        let path = Path::parse(&line)?;
+
+        paths.push(path);
     }
 
     Ok(())
@@ -44,6 +47,33 @@ impl Point {
         let y = values[1].parse::<usize>()?;
 
         Ok(Point { x, y })
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct Path {
+    points: Vec<Point>,
+}
+
+impl Path {
+    fn new() -> Self {
+        Path { points: Vec::new() }
+    }
+
+    fn parse(input: &str) -> Result<Self, ParseIntError> {
+        let mut path = Path::new();
+
+        let points: Vec<&str> = input.split(" -> ").collect();
+
+        for point in points {
+            path.add_point(Point::parse(point)?);
+        }
+
+        Ok(path)
+    }
+
+    fn add_point(&mut self, p: Point) {
+        self.points.push(p)
     }
 }
 
@@ -116,5 +146,30 @@ mod tests {
         let point = Point::parse(input);
 
         assert!(point.is_err());
+    }
+
+    #[test]
+    fn path_simple() {
+        let input = "0,0 -> 1,1";
+        let mut expected = Path::new();
+        expected.add_point(Point::new(0, 0));
+        expected.add_point(Point::new(1, 1));
+
+        let path = Path::parse(input);
+
+        assert_eq!(path, Ok(expected));
+    }
+
+    #[test]
+    fn path_hard() {
+        let input = "498,4 -> 498,6 -> 496,6";
+        let mut expected = Path::new();
+        expected.add_point(Point::new(498, 4));
+        expected.add_point(Point::new(498, 6));
+        expected.add_point(Point::new(496, 6));
+
+        let path = Path::parse(input);
+
+        assert_eq!(path, Ok(expected));
     }
 }
