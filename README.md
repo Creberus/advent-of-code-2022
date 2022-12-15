@@ -21,9 +21,7 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
 - [x] Day 10: Cathode-Ray Tube
 - [x] Day 11: Monkey in the Middle
 - [x] Day 12: Hill Climbing Algorithm
-- [ ] Day 13: Distress Signal
-    - [ ] Part One
-    - [ ] Part Two
+- [x] Day 13: Distress Signal
 - [ ] Day x: *title*
 ...
 
