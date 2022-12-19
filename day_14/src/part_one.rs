@@ -20,7 +20,14 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
 
     paths.iter().for_each(|p| map.apply_rock_path(p));
 
-    println!("{:?}", map);
+    let mut iterations = 0;
+
+    while !map.fill() {
+        iterations += 1;
+    }
+
+    //println!("{:?}", map);
+    println!("It took {} iterations to fill the cave.", iterations);
 
     Ok(())
 }
@@ -194,6 +201,45 @@ impl Map {
                 panic!("Points are not aligned !!!");
             }
         }
+    }
+
+    fn fill(&mut self) -> bool {
+        let mut sand = Point::new(500, 0);
+
+        // Sand logic
+        while sand.y() < self.lowest_point {
+            // 0. Check if we are in the Void
+
+            // 1. Check for tile just below
+            let below = Point::new(sand.x(), sand.y() + 1);
+            let can_fall = self.map.get(&below);
+            if can_fall.is_none() {
+                sand = below;
+                continue;
+            }
+
+            // 2. Check for tile one step down and to the left
+            let below_left = Point::new(sand.x() - 1, sand.y() + 1);
+            let can_fall = self.map.get(&below_left);
+            if can_fall.is_none() {
+                sand = below_left;
+                continue;
+            }
+
+            // 3. Check for tile one step down and to the right
+            let below_right = Point::new(sand.x() + 1, sand.y() + 1);
+            let can_fall = self.map.get(&below_right);
+            if can_fall.is_none() {
+                sand = below_right;
+                continue;
+            }
+
+            // 4. Sand is stuck and comes to rest
+            self.map.insert(sand, Element::Sand);
+            break;
+        }
+
+        return sand.y() >= self.lowest_point;
     }
 }
 
