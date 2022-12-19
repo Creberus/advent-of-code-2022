@@ -28,6 +28,18 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
 - [ ] Day 15: Beacon Exclusion Zone
     - [ ] Part One
     - [ ] Part Two
+- [ ] Day 16: Proboscidea Volcanium
+    - [ ] Part One
+    - [ ] Part Two
+- [ ] Day 17: Pyroclastic Flow
+    - [ ] Part One
+    - [ ] Part Two
+- [ ] Day 18: Boiling Boulders
+    - [ ] Part One
+    - [ ] Part Two
+- [ ] Day 19: Not Enough Minerals
+    - [ ] Part One
+    - [ ] Part Two
 - [ ] Day x: *title*
 ...
 
