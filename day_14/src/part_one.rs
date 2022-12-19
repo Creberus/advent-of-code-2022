@@ -16,6 +16,12 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         paths.push(path);
     }
 
+    let mut map = Map::new();
+
+    paths.iter().for_each(|p| map.apply_rock_path(p));
+
+    println!("{:?}", map);
+
     Ok(())
 }
 
@@ -41,12 +47,20 @@ impl Point {
     fn parse(input: &str) -> Result<Self, ParseIntError> {
         let values: Vec<&str> = input.split(',').collect();
 
-        //TODO: Add check if we have 2 elements
+        assert_eq!(values.len(), 2);
 
         let x = values[0].parse::<usize>()?;
         let y = values[1].parse::<usize>()?;
 
         Ok(Point { x, y })
+    }
+
+    fn x(&self) -> usize {
+        self.x
+    }
+
+    fn y(&self) -> usize {
+        self.y
     }
 }
 
@@ -75,10 +89,112 @@ impl Path {
     fn add_point(&mut self, p: Point) {
         self.points.push(p)
     }
+
+    fn len(&self) -> usize {
+        self.points.len()
+    }
+
+    fn iter(&self) -> PathIter {
+        assert!(self.points.len() > 1);
+
+        PathIter {
+            path: self,
+            index: 0,
+        }
+    }
 }
 
+impl<'a> IntoIterator for &'a Path {
+    type Item = (Point, Point);
+    type IntoIter = PathIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+struct PathIter<'a> {
+    path: &'a Path,
+    index: usize,
+}
+
+impl<'a> Iterator for PathIter<'a> {
+    type Item = (Point, Point);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.path.len() - 1 {
+            return None;
+        }
+
+        let item = (
+            self.path.points[self.index],
+            self.path.points[self.index + 1],
+        );
+
+        self.index += 1;
+
+        Some(item)
+    }
+}
+
+#[derive(Debug)]
 struct Map {
     map: HashMap<Point, Element>,
+    lowest_point: usize,
+}
+
+impl Map {
+    fn new() -> Self {
+        Map {
+            map: HashMap::new(),
+            lowest_point: 0,
+        }
+    }
+
+    fn apply_rock_path(&mut self, rocks: &Path) {
+        for (start, end) in rocks {
+            if self.lowest_point < start.y() {
+                self.lowest_point = start.y();
+            }
+            if self.lowest_point < end.y() {
+                self.lowest_point = end.y();
+            }
+
+            if start.x() == end.x() {
+                let x = start.x();
+                let mut y = start.y();
+
+                if y <= end.y() {
+                    while y <= end.y() {
+                        self.map.insert(Point::new(x, y), Element::Rock);
+                        y += 1;
+                    }
+                } else {
+                    while y >= end.y() {
+                        self.map.insert(Point::new(x, y), Element::Rock);
+                        y -= 1;
+                    }
+                }
+            } else if start.y() == end.y() {
+                let mut x = start.x();
+                let y = start.y();
+
+                if x <= end.x() {
+                    while x <= end.x() {
+                        self.map.insert(Point::new(x, y), Element::Rock);
+                        x += 1;
+                    }
+                } else {
+                    while x >= end.x() {
+                        self.map.insert(Point::new(x, y), Element::Rock);
+                        x -= 1;
+                    }
+                }
+            } else {
+                panic!("Points are not aligned !!!");
+            }
+        }
+    }
 }
 
 #[cfg(test)]
