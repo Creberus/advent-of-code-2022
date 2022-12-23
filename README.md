@@ -23,9 +23,7 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
 - [x] Day 12: Hill Climbing Algorithm
 - [x] Day 13: Distress Signal
 - [x] Day 14: Regolith Reservoir
-- [ ] Day 15: Beacon Exclusion Zone
-    - [ ] Part One
-    - [ ] Part Two
+- [x] Day 15: Beacon Exclusion Zone
 - [ ] Day 16: Proboscidea Volcanium
     - [ ] Part One
     - [ ] Part Two
