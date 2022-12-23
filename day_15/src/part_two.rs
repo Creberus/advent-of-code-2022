@@ -60,19 +60,106 @@ pub fn main_p2() -> Result<(), Box<dyn Error>> {
     println!("max_y: {}", max_y);
 
     let mut free_spot = Point::new(-1, -1);
-    let mut empty = true;
 
     // Algorithm
-    // TODO
-    unimplemented!();
+    // 1. For each sensor
+    // 2. Take all the positions at sensor(value) + 1
+    // 3. For each positions, check if another sensor is nearby
+
+    for (point, t) in &items {
+        match *t {
+            Type::Beacon => continue,
+            Type::Sensor(radius) => {
+                println!("Looking at Sensor at position {:?}", point);
+                let points = compute_point_outside_radius(point, radius);
+
+                for p in points {
+                    // 1. Check if in range (0,4_000_000)
+                    if p.x() < 0 || p.x() > 4_000_000 || p.y() < 0 || p.y() > 4_000_000 {
+                        continue;
+                    }
+
+                    // 2. Check if is already a Sensor or Beacon
+                    if items.contains_key(&p) {
+                        continue;
+                    }
+
+                    // 3. Check if in range of all Sensors
+                    let mut is_in_range = false;
+
+                    for (point, t) in &items {
+                        match *t {
+                            Type::Beacon => continue,
+                            Type::Sensor(value) => {
+                                if p.compare(point) <= value {
+                                    is_in_range = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if is_in_range {
+                        continue;
+                    }
+
+                    // 4. If all previous checks failed, success, we found the distress beacon
+                    free_spot = p;
+                    break;
+                }
+            }
+        }
+
+        if free_spot != Point::new(-1, -1) {
+            break;
+        }
+    }
 
     println!("Found free spot at {:?}", free_spot);
     println!(
         "Tuning frequency: {}",
-        free_spot.x() * 4_000_000 + free_spot.y()
+        free_spot.x() as u64 * 4_000_000 + free_spot.y() as u64
     );
 
     Ok(())
+}
+
+fn compute_point_outside_radius(p: &Point, radius: u32) -> Vec<Point> {
+    let mut points = Vec::new();
+
+    let mut left = Point::new(p.x() - radius as i32 - 1, p.y());
+    let mut right = Point::new(p.x() + radius as i32 + 1, p.y());
+    let mut up = Point::new(p.x(), p.y() - radius as i32 - 1);
+    let mut down = Point::new(p.x(), p.y() + radius as i32 + 1);
+
+    while left.x() != p.x() {
+        points.push(left);
+
+        *left.x_mut() += 1;
+        *left.y_mut() -= 1;
+    }
+
+    while up.y() != p.y() {
+        points.push(up);
+
+        *up.x_mut() += 1;
+        *up.y_mut() += 1;
+    }
+
+    while right.x() != p.x() {
+        points.push(right);
+
+        *right.x_mut() -= 1;
+        *right.y_mut() += 1;
+    }
+
+    while down.x() != p.x() {
+        points.push(down);
+
+        *down.x_mut() -= 1;
+        *down.y_mut() -= 1;
+    }
+
+    points
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
