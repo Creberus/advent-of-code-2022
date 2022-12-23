@@ -42,7 +42,18 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
 - [ ] Day 21: Monkey Math
     - [ ] Part One
     - [ ] Part Two
-- [ ] Day x: *title*
+- [ ] Day 22: Monkey Map
+    - [ ] Part One
+    - [ ] Part Two
+- [ ] Day 23: Unstable Diffusion
+    - [ ] Part One
+    - [ ] Part Two
+- [ ] Day 24: xxx
+    - [ ] Part One
+    - [ ] Part Two
+- [ ] Day 25: xxx
+    - [ ] Part One
+    - [ ] Part Two
 ...
 
 ## Link
