@@ -47,11 +47,49 @@ impl Valve {
     fn flow_rate(&self) -> u32 {
         self.flow_rate
     }
+
+    fn iter(&self) -> TunnelIter {
+        TunnelIter::new(&self.tunnels)
+    }
 }
 
 impl PartialEq for Valve {
     fn eq(&self, other: &Self) -> bool {
         self.label == other.label
+    }
+}
+
+impl<'a> IntoIterator for &'a Valve {
+    type Item = &'a String;
+    type IntoIter = TunnelIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+struct TunnelIter<'a> {
+    index: usize,
+    tunnels: &'a Vec<String>,
+}
+
+impl<'a> TunnelIter<'a> {
+    fn new(tunnels: &'a Vec<String>) -> Self {
+        TunnelIter { index: 0, tunnels }
+    }
+}
+
+impl<'a> Iterator for TunnelIter<'a> {
+    type Item = &'a String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index < self.tunnels.len() {
+            let tunnel = Some(&self.tunnels[self.index]);
+            self.index += 1;
+            tunnel
+        } else {
+            None
+        }
     }
 }
 
@@ -86,8 +124,11 @@ mod tests {
         let input = "Valve AA has flow rate=0; tunnels lead to valves DD, II, BB";
 
         let valve = parse_valve(input.to_string()).unwrap();
+        let tunnels = Vec::from([String::from("DD"), String::from("II"), String::from("BB")]);
 
         assert_eq!(*valve.label(), "AA".to_string());
         assert_eq!(valve.flow_rate(), 0);
+
+        assert!(valve.iter().map(|s| s.clone()).eq(tunnels));
     }
 }
