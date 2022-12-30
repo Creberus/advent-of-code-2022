@@ -1,23 +1,110 @@
 use std::collections::{HashSet, VecDeque};
 use std::error::Error;
+use std::fs::OpenOptions;
 use std::hash::Hash;
-use std::io;
+use std::io::{self, Write};
 
 pub fn main_p1() -> Result<(), Box<dyn Error>> {
     let lines = io::stdin().lines();
 
-    let mut valves = HashSet::new();
+    let mut nodes = HashSet::new();
+    let mut edges = HashSet::new();
 
     for line in lines {
         let line = line.unwrap();
 
-        let valve = parse_valve(line).unwrap();
+        let (node, node_edges) = parse_valve(line).unwrap();
 
-        valves.insert(valve);
+        nodes.insert(node);
+
+        for node_edge in node_edges {
+            edges.insert(node_edge);
+        }
     }
 
-    println!("{:?}", valves);
+    println!("Nodes:\n{:?}", nodes);
+    println!("Edges:\n{:?}", edges);
 
+    // Reduce the graph by removing the node with flow_rate of 0.
+    for node in &nodes {
+        if node.flow_rate() != 0 || *node.label() == String::from("AA") {
+            continue;
+        }
+
+        println!("Removing node: {:?}", node);
+
+        let node_edges: Vec<Edge> = edges
+            .iter()
+            .filter_map(|e| {
+                if e.a() == node.label() || e.b() == node.label() {
+                    Some(e.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Remove the edges from the Edgelist
+        for node_edge in &node_edges {
+            edges.remove(node_edge);
+        }
+
+        // Now create new edges between elements that were connected
+        if edges.len() <= 1 {
+            continue; // Do nothing, the node will be suppressed from the graph.
+        } else {
+            for (index, node_edge) in node_edges.iter().enumerate() {
+                let a = if node_edge.a() == node.label() {
+                    node_edge.b()
+                } else {
+                    node_edge.a()
+                };
+
+                for next_nodes in index + 1..node_edges.len() {
+                    let b_node = &node_edges[next_nodes];
+                    let b = if b_node.a() == node.label() {
+                        b_node.b()
+                    } else {
+                        b_node.a()
+                    };
+
+                    edges.insert(Edge::new(
+                        a.clone(),
+                        b.clone(),
+                        node_edge.weight() + b_node.weight(),
+                    ));
+                }
+            }
+        }
+    }
+
+    println!("Nodes:\n{:?}", nodes);
+    println!("Edges:\n{:?}", edges);
+
+    let mut dot_file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open("graph.dot")
+        .unwrap();
+
+    dot_file.write("graph Day16 {\n".as_bytes()).unwrap();
+    for edge in edges {
+        dot_file
+            .write(
+                format!(
+                    "\t{} -- {} [label={}];\n",
+                    edge.a(),
+                    edge.b(),
+                    edge.weight()
+                )
+                .as_bytes(),
+            )
+            .unwrap();
+    }
+    dot_file.write("}".as_bytes()).unwrap();
+
+    /*
     // Find path with highest flow rate
     let mut minutes = 0;
     let mut nodes_left = 1;
@@ -54,7 +141,7 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
             minutes += 1;
             println!("Minute: {}", minutes);
         }
-    }
+    }*/
 
     Ok(())
 }
@@ -138,7 +225,7 @@ impl<'a> Iterator for TunnelIter<'a> {
     }
 }
 
-fn parse_valve(s: String) -> Result<Valve, ()> {
+fn parse_valve(s: String) -> Result<(Node, Vec<Edge>), ()> {
     let line: Vec<&str> = s.split(';').collect();
 
     let valve_data: Vec<&str> = line[0].split(' ').collect();
@@ -150,18 +237,100 @@ fn parse_valve(s: String) -> Result<Valve, ()> {
     let name = valve_data[1];
     let flow_rate = valve_data[4];
     let (_, flow_rate) = flow_rate.split_at(5);
-    let flow_rate: u32 = flow_rate.parse().unwrap();
+    let flow_rate = flow_rate.parse().unwrap();
 
-    let mut valve = Valve::new(String::from(name), flow_rate);
+    let node = Node::new(String::from(name), flow_rate);
 
     let tunnels: Vec<&str> = tunnels_data.split(", ").collect();
 
+    let mut edges = Vec::new();
+
     for tunnel in tunnels {
-        valve.add_tunnel(String::from(tunnel));
+        let edge = Edge::new(String::from(name), String::from(tunnel), 1);
+        edges.push(edge);
     }
 
-    Ok(valve)
+    Ok((node, edges))
 }
+
+// Node
+#[derive(Debug, Eq)]
+struct Node {
+    label: String,
+    flow_rate: usize,
+}
+
+impl Node {
+    fn new(label: String, flow_rate: usize) -> Self {
+        Node { label, flow_rate }
+    }
+
+    fn label(&self) -> &String {
+        &self.label
+    }
+
+    fn flow_rate(&self) -> usize {
+        self.flow_rate
+    }
+}
+
+impl PartialEq for Node {
+    fn eq(&self, other: &Self) -> bool {
+        self.label == other.label
+    }
+}
+
+impl Hash for Node {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.label.hash(state)
+    }
+}
+
+// Edge
+#[derive(Debug, Eq, Clone)]
+struct Edge {
+    a: String,
+    b: String,
+    weight: usize,
+}
+
+impl Edge {
+    fn new(a: String, b: String, weight: usize) -> Self {
+        Edge { a, b, weight }
+    }
+
+    fn a(&self) -> &String {
+        &self.a
+    }
+
+    fn b(&self) -> &String {
+        &self.b
+    }
+
+    fn weight(&self) -> usize {
+        self.weight
+    }
+}
+
+impl PartialEq for Edge {
+    fn eq(&self, other: &Self) -> bool {
+        (self.a == other.a && self.b == other.b) || (self.a == other.b && self.b == other.a)
+    }
+}
+
+impl Hash for Edge {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        if self.a <= self.b {
+            self.a.hash(state);
+            self.b.hash(state);
+        } else {
+            self.b.hash(state);
+            self.a.hash(state);
+        }
+    }
+}
+
+// BFSNode
 
 #[derive(Debug, Clone)]
 struct BFSNode {
@@ -219,12 +388,17 @@ mod tests {
     fn valve() {
         let input = "Valve AA has flow rate=0; tunnels lead to valves DD, II, BB";
 
-        let valve = parse_valve(input.to_string()).unwrap();
-        let tunnels = Vec::from([String::from("DD"), String::from("II"), String::from("BB")]);
+        let (node, edges) = parse_valve(input.to_string()).unwrap();
 
-        assert_eq!(*valve.label(), "AA".to_string());
-        assert_eq!(valve.flow_rate(), 0);
+        let tunnels = Vec::from([
+            Edge::new(String::from("AA"), String::from("DD"), 1),
+            Edge::new(String::from("AA"), String::from("II"), 1),
+            Edge::new(String::from("AA"), String::from("BB"), 1),
+        ]);
 
-        assert!(valve.iter().map(|s| s.clone()).eq(tunnels));
+        assert_eq!(*node.label(), "AA".to_string());
+        assert_eq!(node.flow_rate(), 0);
+
+        assert!(edges.iter().eq(&tunnels));
     }
 }
