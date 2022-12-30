@@ -25,6 +25,8 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
     println!("Nodes:\n{:?}", nodes);
     println!("Edges:\n{:?}", edges);
 
+    let mut nodes_to_remove = Vec::<Node>::new();
+
     // Reduce the graph by removing the node with flow_rate of 0.
     for node in &nodes {
         if node.flow_rate() != 0 || *node.label() == String::from("AA") {
@@ -32,6 +34,7 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         }
 
         println!("Removing node: {:?}", node);
+        nodes_to_remove.push(node.clone());
 
         let node_edges: Vec<Edge> = edges
             .iter()
@@ -78,6 +81,10 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         }
     }
 
+    for node in nodes_to_remove {
+        nodes.remove(&node);
+    }
+
     println!("Nodes:\n{:?}", nodes);
     println!("Edges:\n{:?}", edges);
 
@@ -89,7 +96,7 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         .unwrap();
 
     dot_file.write("graph Day16 {\n".as_bytes()).unwrap();
-    for edge in edges {
+    for edge in &edges {
         dot_file
             .write(
                 format!(
@@ -104,125 +111,113 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
     }
     dot_file.write("}".as_bytes()).unwrap();
 
-    /*
     // Find path with highest flow rate
-    let mut minutes = 0;
-    let mut nodes_left = 1;
-    let mut queue = VecDeque::<BFSNode>::new();
-    queue.push_back(BFSNode::new(String::from("AA"), None));
+    let mut max_pression_per_minute = Vec::<usize>::new();
+    for _ in 0..31 {
+        max_pression_per_minute.push(0);
+    }
 
+    let mut node_per_min: Vec<Vec<BFSNode>> = Vec::new();
+    for _ in 0..31 {
+        node_per_min.push(Vec::new());
+    }
+    node_per_min[0].push(BFSNode::new(String::from("AA"), None));
+
+    let mut minutes = 0;
     println!("Minute: {}", minutes);
 
-    while minutes != 30 && !queue.is_empty() {
-        let bfs_node = queue.pop_front().unwrap();
-        nodes_left -= 1;
+    let mut paths = Vec::new();
 
-        let valve = bfs_node.clone().into();
-        let node = valves.get(&valve).unwrap();
+    while minutes <= 30 {
+        let bfs_node = node_per_min[minutes].pop().unwrap();
 
-        // Check if the flow rate of the valve is higher than 0.
-        if node.flow_rate() > 0 && !bfs_node.is_valve_opened(node.label()) {
-            let mut node_open = BFSNode::new(bfs_node.label().clone(), Some(&bfs_node));
-            node_open.increase_min();
-            node_open.open_valve();
+        if bfs_node.minutes() >= 30 {
+            paths.push(bfs_node);
+        } else if bfs_node.minutes() > 5
+            && bfs_node.current_pression(minutes) < max_pression_per_minute[minutes - 5]
+        {
+            ();
+        } else {
+            max_pression_per_minute[minutes] =
+                max_pression_per_minute[minutes].max(bfs_node.current_pression(minutes));
 
-            queue.push_back(node_open);
+            let valve = Node::new(bfs_node.label().clone(), 0);
+            let node = nodes.get(&valve).unwrap();
+
+            // If all the valves are open, the node finished her journey
+            if bfs_node.valves_open() == nodes.len() - 1 {
+                paths.push(bfs_node);
+            } else {
+                // Check if the flow rate of the valve is higher than 0.
+                if node.flow_rate() > 0 && !bfs_node.is_valve_opened(node.label()) {
+                    let mut opened_node = BFSNode::new(node.label().clone(), Some(&bfs_node));
+
+                    opened_node.increase_min(1);
+                    opened_node.open_valve(node.flow_rate());
+
+                    node_per_min[opened_node.minutes() as usize].push(opened_node);
+                }
+
+                // Add neighbors to queue
+                for edge in &edges {
+                    let neighbor = if edge.a() == node.label() {
+                        Some(edge.b())
+                    } else if edge.b() == node.label() {
+                        Some(edge.a())
+                    } else {
+                        None
+                    };
+
+                    match neighbor {
+                        Some(n) => {
+                            let mut new_bfs_node = BFSNode::new(n.clone(), Some(&bfs_node));
+                            new_bfs_node.increase_min(edge.weight() as u32);
+
+                            node_per_min[new_bfs_node.minutes() as usize].push(new_bfs_node);
+                        }
+                        None => (),
+                    }
+                }
+            }
         }
 
-        // Add neighbors to queue
-        for tunnel in node {
-            let mut t = BFSNode::new(tunnel.clone(), Some(&bfs_node));
-            t.increase_min();
-            queue.push_back(t);
-        }
-
-        if nodes_left == 0 {
-            nodes_left = queue.len();
+        if node_per_min[minutes].len() == 0 {
+            let max = paths.iter().reduce(|acc, item| {
+                if item.pression() > acc.pression() {
+                    item
+                } else {
+                    acc
+                }
+            });
+            match max {
+                Some(node) => println!("Node {:?} with pression {}", node, node.pression()),
+                None => (),
+            };
             minutes += 1;
             println!("Minute: {}", minutes);
+            println!(
+                "Number of items to analyse: {}",
+                node_per_min[minutes].len()
+            );
+            println!("Max pressions:\n{:?}", max_pression_per_minute);
         }
-    }*/
+    }
+
+    println!("Finished !");
+
+    let max = paths.iter().reduce(|acc, item| {
+        if item.pression() > acc.pression() {
+            item
+        } else {
+            acc
+        }
+    });
+    match max {
+        Some(node) => println!("Node {:?} with pression {}", node, node.pression()),
+        None => (),
+    };
 
     Ok(())
-}
-
-#[derive(Debug, Eq)]
-struct Valve {
-    label: String,
-    flow_rate: u32,
-    tunnels: Vec<String>,
-}
-
-impl Valve {
-    fn new(label: String, flow_rate: u32) -> Self {
-        Valve {
-            label,
-            flow_rate,
-            tunnels: Vec::new(),
-        }
-    }
-
-    fn add_tunnel(&mut self, tunnel: String) {
-        self.tunnels.push(tunnel);
-    }
-
-    fn label(&self) -> &String {
-        &self.label
-    }
-
-    fn flow_rate(&self) -> u32 {
-        self.flow_rate
-    }
-
-    fn iter(&self) -> TunnelIter {
-        TunnelIter::new(&self.tunnels)
-    }
-}
-
-impl PartialEq for Valve {
-    fn eq(&self, other: &Self) -> bool {
-        self.label == other.label
-    }
-}
-
-impl Hash for Valve {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.label.hash(state)
-    }
-}
-
-impl<'a> IntoIterator for &'a Valve {
-    type Item = &'a String;
-    type IntoIter = TunnelIter<'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
-    }
-}
-
-struct TunnelIter<'a> {
-    index: usize,
-    tunnels: &'a Vec<String>,
-}
-
-impl<'a> TunnelIter<'a> {
-    fn new(tunnels: &'a Vec<String>) -> Self {
-        TunnelIter { index: 0, tunnels }
-    }
-}
-
-impl<'a> Iterator for TunnelIter<'a> {
-    type Item = &'a String;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.index < self.tunnels.len() {
-            let tunnel = Some(&self.tunnels[self.index]);
-            self.index += 1;
-            tunnel
-        } else {
-            None
-        }
-    }
 }
 
 fn parse_valve(s: String) -> Result<(Node, Vec<Edge>), ()> {
@@ -254,7 +249,7 @@ fn parse_valve(s: String) -> Result<(Node, Vec<Edge>), ()> {
 }
 
 // Node
-#[derive(Debug, Eq)]
+#[derive(Debug, Eq, Clone)]
 struct Node {
     label: String,
     flow_rate: usize,
@@ -335,7 +330,7 @@ impl Hash for Edge {
 #[derive(Debug, Clone)]
 struct BFSNode {
     label: String,
-    valves_open: Vec<(String, u32)>,
+    valves_open: Vec<(String, usize, u32)>,
     minutes: u32,
 }
 
@@ -355,28 +350,43 @@ impl BFSNode {
         }
     }
 
-    fn open_valve(&mut self) -> &mut Self {
-        self.valves_open.push((self.label.clone(), self.minutes));
+    fn open_valve(&mut self, pression: usize) -> &mut Self {
+        self.valves_open
+            .push((self.label.clone(), pression, self.minutes));
         self
+    }
+
+    fn valves_open(&self) -> usize {
+        self.valves_open.len()
     }
 
     fn label(&self) -> &String {
         &self.label
     }
 
-    fn increase_min(&mut self) -> &mut Self {
-        self.minutes += 1;
+    fn minutes(&self) -> u32 {
+        self.minutes
+    }
+
+    fn increase_min(&mut self, number: u32) -> &mut Self {
+        self.minutes += number;
         self
     }
 
     fn is_valve_opened(&self, valve: &String) -> bool {
         self.valves_open.iter().any(|v| v.0 == *valve)
     }
-}
 
-impl Into<Valve> for BFSNode {
-    fn into(self) -> Valve {
-        Valve::new(self.label.clone(), 0)
+    fn pression(&self) -> usize {
+        self.current_pression(30)
+    }
+
+    fn current_pression(&self, minutes: usize) -> usize {
+        let mut pression = 0;
+        for (_, p, min) in &self.valves_open {
+            pression += p * (minutes - *min as usize);
+        }
+        pression
     }
 }
 
