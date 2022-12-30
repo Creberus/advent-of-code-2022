@@ -1,5 +1,6 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use std::error::Error;
+use std::hash::Hash;
 use std::io;
 
 pub fn main_p1() -> Result<(), Box<dyn Error>> {
@@ -17,10 +18,48 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
 
     println!("{:?}", valves);
 
+    // Find path with highest flow rate
+    let mut minutes = 0;
+    let mut nodes_left = 1;
+    let mut queue = VecDeque::<BFSNode>::new();
+    queue.push_back(BFSNode::new(String::from("AA"), None));
+
+    println!("Minute: {}", minutes);
+
+    while minutes != 30 && !queue.is_empty() {
+        let bfs_node = queue.pop_front().unwrap();
+        nodes_left -= 1;
+
+        let valve = bfs_node.clone().into();
+        let node = valves.get(&valve).unwrap();
+
+        // Check if the flow rate of the valve is higher than 0.
+        if node.flow_rate() > 0 && !bfs_node.is_valve_opened(node.label()) {
+            let mut node_open = BFSNode::new(bfs_node.label().clone(), Some(&bfs_node));
+            node_open.increase_min();
+            node_open.open_valve();
+
+            queue.push_back(node_open);
+        }
+
+        // Add neighbors to queue
+        for tunnel in node {
+            let mut t = BFSNode::new(tunnel.clone(), Some(&bfs_node));
+            t.increase_min();
+            queue.push_back(t);
+        }
+
+        if nodes_left == 0 {
+            nodes_left = queue.len();
+            minutes += 1;
+            println!("Minute: {}", minutes);
+        }
+    }
+
     Ok(())
 }
 
-#[derive(Debug, Hash, Eq)]
+#[derive(Debug, Eq)]
 struct Valve {
     label: String,
     flow_rate: u32,
@@ -56,6 +95,12 @@ impl Valve {
 impl PartialEq for Valve {
     fn eq(&self, other: &Self) -> bool {
         self.label == other.label
+    }
+}
+
+impl Hash for Valve {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.label.hash(state)
     }
 }
 
@@ -97,7 +142,10 @@ fn parse_valve(s: String) -> Result<Valve, ()> {
     let line: Vec<&str> = s.split(';').collect();
 
     let valve_data: Vec<&str> = line[0].split(' ').collect();
-    let (_, tunnels_data) = line[1].split_at(24);
+    let (_, mut tunnels_data) = line[1].split_at(23);
+    if tunnels_data.chars().nth(0).unwrap() == ' ' {
+        (_, tunnels_data) = tunnels_data.split_at(1);
+    }
 
     let name = valve_data[1];
     let flow_rate = valve_data[4];
@@ -113,6 +161,54 @@ fn parse_valve(s: String) -> Result<Valve, ()> {
     }
 
     Ok(valve)
+}
+
+#[derive(Debug, Clone)]
+struct BFSNode {
+    label: String,
+    valves_open: Vec<(String, u32)>,
+    minutes: u32,
+}
+
+impl BFSNode {
+    fn new(label: String, node: Option<&BFSNode>) -> Self {
+        match node {
+            None => BFSNode {
+                label,
+                valves_open: Vec::new(),
+                minutes: 0,
+            },
+            Some(node) => BFSNode {
+                label,
+                valves_open: node.valves_open.clone(),
+                minutes: node.minutes,
+            },
+        }
+    }
+
+    fn open_valve(&mut self) -> &mut Self {
+        self.valves_open.push((self.label.clone(), self.minutes));
+        self
+    }
+
+    fn label(&self) -> &String {
+        &self.label
+    }
+
+    fn increase_min(&mut self) -> &mut Self {
+        self.minutes += 1;
+        self
+    }
+
+    fn is_valve_opened(&self, valve: &String) -> bool {
+        self.valves_open.iter().any(|v| v.0 == *valve)
+    }
+}
+
+impl Into<Valve> for BFSNode {
+    fn into(self) -> Valve {
+        Valve::new(self.label.clone(), 0)
+    }
 }
 
 #[cfg(test)]
