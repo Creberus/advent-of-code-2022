@@ -24,15 +24,34 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
 
     write_graph("graph_1_parsed.dot", &edges)?;
 
+    let nodes_to_remove = simplify_graph(&nodes, &mut edges);
+
+    // Remove useless nodes with flow_rate=0
+    for node in nodes_to_remove {
+        nodes.remove(&node);
+    }
+
+    write_graph("graph_2_simplified.dot", &edges)?;
+
+    // Modify the Graph to make all nodes linked to each others.
+    // This way we can do a simple BFS to find the best path.
+    //
+    edges = link_all(&nodes, &mut edges);
+
+    write_graph("graph_3_all_linked.dot", &edges)?;
+
+    Ok(())
+}
+
+fn simplify_graph(nodes: &HashSet<Node>, edges: &mut HashSet<Edge>) -> Vec<Node> {
     let mut nodes_to_remove = Vec::<Node>::new();
 
     // Reduce the graph by removing the node with flow_rate of 0.
-    for node in &nodes {
+    for node in nodes {
         if node.flow_rate() != 0 || *node.label() == String::from("AA") {
             continue;
         }
 
-        println!("Removing node: {:?}", node);
         nodes_to_remove.push(node.clone());
 
         let node_edges: Vec<Edge> = edges
@@ -80,125 +99,131 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    // Remove useless nodes with valve broken
-    for node in nodes_to_remove {
-        nodes.remove(&node);
-    }
+    nodes_to_remove
+}
 
-    write_graph("graph_2_simplified.dot", &edges)?;
+fn link_all(nodes: &HashSet<Node>, edges: &mut HashSet<Edge>) -> HashSet<Edge> {
+    let mut linked_edges = HashSet::new();
 
-    // Modify the Graph to make all nodes linked to each others.
-    // This way we can do a simple BFS to find the best path.
+    for node in nodes {
+        for other in nodes {
+            if node == other {
+                continue;
+            }
 
-    write_graph("graph_3_all_linked.dot", &edges)?;
+            let time_cost = find_shortest_time(&node, &other, edges);
 
-    // Find path with highest flow rate
-    let mut max_pression_per_minute = Vec::<usize>::new();
-    for _ in 0..31 {
-        max_pression_per_minute.push(0);
-    }
-
-    let mut node_per_min: Vec<Vec<BFSNode>> = Vec::new();
-    for _ in 0..31 {
-        node_per_min.push(Vec::new());
-    }
-    node_per_min[0].push(BFSNode::new(String::from("AA"), None));
-
-    let mut minutes = 0;
-    println!("Minute: {}", minutes);
-
-    let mut paths = Vec::new();
-
-    while minutes <= 30 {
-        let bfs_node = node_per_min[minutes].pop().unwrap();
-
-        if bfs_node.minutes() >= 30 {
-            paths.push(bfs_node);
-        } else if bfs_node.minutes() > 5
-            && bfs_node.current_pression(minutes) < max_pression_per_minute[minutes - 5]
-        {
-            ();
-        } else {
-            max_pression_per_minute[minutes] =
-                max_pression_per_minute[minutes].max(bfs_node.current_pression(minutes));
-
-            let valve = Node::new(bfs_node.label().clone(), 0);
-            let node = nodes.get(&valve).unwrap();
-
-            // If all the valves are open, the node finished her journey
-            if bfs_node.valves_open() == nodes.len() - 1 {
-                paths.push(bfs_node);
+            if let Ok(time_cost) = time_cost {
+                linked_edges.insert(Edge::new(
+                    node.label().clone(),
+                    other.label().clone(),
+                    time_cost,
+                ));
             } else {
-                // Check if the flow rate of the valve is higher than 0.
-                if node.flow_rate() > 0 && !bfs_node.is_valve_opened(node.label()) {
-                    let mut opened_node = BFSNode::new(node.label().clone(), Some(&bfs_node));
-
-                    opened_node.increase_min(1);
-                    opened_node.open_valve(node.flow_rate());
-
-                    node_per_min[opened_node.minutes() as usize].push(opened_node);
-                }
-
-                // Add neighbors to queue
-                for edge in &edges {
-                    let neighbor = if edge.a() == node.label() {
-                        Some(edge.b())
-                    } else if edge.b() == node.label() {
-                        Some(edge.a())
-                    } else {
-                        None
-                    };
-
-                    match neighbor {
-                        Some(n) => {
-                            let mut new_bfs_node = BFSNode::new(n.clone(), Some(&bfs_node));
-                            new_bfs_node.increase_min(edge.weight() as u32);
-
-                            node_per_min[new_bfs_node.minutes() as usize].push(new_bfs_node);
-                        }
-                        None => (),
-                    }
-                }
+                panic!("Path not found between {:?} and {:?}", node, other);
             }
         }
+    }
 
-        if node_per_min[minutes].len() == 0 {
-            let max = paths.iter().reduce(|acc, item| {
-                if item.pression() > acc.pression() {
-                    item
+    linked_edges
+}
+
+fn find_shortest_time(a: &Node, b: &Node, edges: &HashSet<Edge>) -> Result<usize, ()> {
+    let mut queue = VecDeque::<STNode>::new();
+
+    queue.push_back(STNode::from(a));
+
+    while !queue.is_empty() {
+        let mut node = queue.pop_front().unwrap();
+
+        node.visit();
+
+        if node.label() == b.label() {
+            return Ok(node.time_cost());
+        }
+
+        let neighbors: Vec<Edge> = edges
+            .iter()
+            .filter_map(|e| {
+                if e.a() == node.label() || e.b() == node.label() {
+                    Some(e.clone())
                 } else {
-                    acc
+                    None
                 }
-            });
-            match max {
-                Some(node) => println!("Node {:?} with pression {}", node, node.pression()),
-                None => (),
+            })
+            .collect();
+
+        for neighbor in neighbors {
+            let neighbor_label = if neighbor.a() == node.label() {
+                neighbor.b()
+            } else {
+                neighbor.a()
             };
-            minutes += 1;
-            println!("Minute: {}", minutes);
-            println!(
-                "Number of items to analyse: {}",
-                node_per_min[minutes].len()
-            );
-            println!("Max pressions:\n{:?}", max_pression_per_minute);
+
+            let mut n = STNode::new(neighbor_label.clone(), Some(&node));
+
+            n.add_time(neighbor.weight());
+
+            queue.push_back(n);
         }
     }
 
-    println!("Finished !");
+    // Not found
+    Err(())
+}
 
-    let max = paths.iter().reduce(|acc, item| {
-        if item.pression() > acc.pression() {
-            item
-        } else {
-            acc
+#[derive(Debug)]
+struct STNode {
+    label: String,
+    time_cost: usize,
+    visited: Vec<String>,
+}
+
+impl STNode {
+    fn new(label: String, other: Option<&STNode>) -> Self {
+        match other {
+            Some(other) => Self {
+                label,
+                time_cost: other.time_cost,
+                visited: other.visited.clone(),
+            },
+            None => Self {
+                label,
+                time_cost: 0,
+                visited: Vec::new(),
+            },
         }
-    });
-    match max {
-        Some(node) => println!("Node {:?} with pression {}", node, node.pression()),
-        None => (),
-    };
+    }
 
-    Ok(())
+    fn label(&self) -> &String {
+        &self.label
+    }
+
+    fn time_cost(&self) -> usize {
+        self.time_cost
+    }
+
+    fn visited(&self) -> &Vec<String> {
+        &self.visited
+    }
+
+    fn add_time(&mut self, time: usize) {
+        self.time_cost += time
+    }
+
+    fn visit(&mut self) {
+        self.visited.push(self.label.clone())
+    }
+}
+
+impl From<&Node> for STNode {
+    fn from(node: &Node) -> Self {
+        Self {
+            label: node.label().clone(),
+            time_cost: 0,
+            visited: Vec::new(),
+        }
+    }
 }
 
 fn write_graph(path: &str, edges: &HashSet<Edge>) -> Result<(), Box<dyn Error>> {
