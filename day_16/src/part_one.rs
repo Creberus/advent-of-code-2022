@@ -22,8 +22,7 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    println!("Nodes:\n{:?}", nodes);
-    println!("Edges:\n{:?}", edges);
+    write_graph("graph_1_parsed.dot", &edges)?;
 
     let mut nodes_to_remove = Vec::<Node>::new();
 
@@ -81,35 +80,17 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         }
     }
 
+    // Remove useless nodes with valve broken
     for node in nodes_to_remove {
         nodes.remove(&node);
     }
 
-    println!("Nodes:\n{:?}", nodes);
-    println!("Edges:\n{:?}", edges);
+    write_graph("graph_2_simplified.dot", &edges)?;
 
-    let mut dot_file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open("graph.dot")
-        .unwrap();
+    // Modify the Graph to make all nodes linked to each others.
+    // This way we can do a simple BFS to find the best path.
 
-    dot_file.write("graph Day16 {\n".as_bytes()).unwrap();
-    for edge in &edges {
-        dot_file
-            .write(
-                format!(
-                    "\t{} -- {} [label={}];\n",
-                    edge.a(),
-                    edge.b(),
-                    edge.weight()
-                )
-                .as_bytes(),
-            )
-            .unwrap();
-    }
-    dot_file.write("}".as_bytes()).unwrap();
+    write_graph("graph_3_all_linked.dot", &edges)?;
 
     // Find path with highest flow rate
     let mut max_pression_per_minute = Vec::<usize>::new();
@@ -216,6 +197,32 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         Some(node) => println!("Node {:?} with pression {}", node, node.pression()),
         None => (),
     };
+
+    Ok(())
+}
+
+fn write_graph(path: &str, edges: &HashSet<Edge>) -> Result<(), Box<dyn Error>> {
+    let mut dot_file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(path)?;
+
+    dot_file.write("graph Day16 {\n".as_bytes())?;
+
+    for edge in edges {
+        dot_file.write(
+            format!(
+                "\t{} -- {} [label={}];\n",
+                edge.a(),
+                edge.b(),
+                edge.weight()
+            )
+            .as_bytes(),
+        )?;
+    }
+
+    dot_file.write("}".as_bytes())?;
 
     Ok(())
 }
