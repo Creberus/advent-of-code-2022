@@ -40,6 +40,14 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
 
     write_graph("graph_3_all_linked.dot", &edges)?;
 
+    // Now perform a BFS to find the best path.
+    // We need to brute force and test every possibilities but this shouldn't take too long thanks
+    // to previus steps.
+
+    let max_pressure = find_most_pressure(&nodes, &edges);
+
+    println!("Max pressure: {}", max_pressure);
+
     Ok(())
 }
 
@@ -226,6 +234,141 @@ impl From<&Node> for STNode {
     }
 }
 
+fn find_most_pressure(nodes: &HashSet<Node>, edges: &HashSet<Edge>) -> usize {
+    let mut queue = VecDeque::<MPNode>::new();
+
+    let mut max_pressure = 0;
+
+    queue.push_back(MPNode::new(String::from("AA"), None));
+
+    while !queue.is_empty() {
+        let mut node = queue.pop_front().unwrap();
+        let graph_node = nodes.get(&Node::new(node.label().clone(), 0)).unwrap();
+
+        node.visit();
+
+        // Check if we run out of time
+        if node.minutes() >= 30 {
+            max_pressure = max_pressure.max(node.pression());
+            continue;
+        }
+
+        // Open the valve if we are not on starting node
+        if node.label() != &String::from("AA") {
+            // Always open valve for the node we are in
+            node.increase_min(1);
+            node.open_valve(graph_node.flow_rate());
+        }
+
+        // Check if we visited all nodes or we run out of time
+        if node.visited().len() == nodes.len() || node.minutes() >= 30 {
+            max_pressure = max_pressure.max(node.pression());
+            continue;
+        }
+
+        for neighbor in nodes {
+            if neighbor.label() == node.label() || node.visited().contains(neighbor.label()) {
+                continue;
+            }
+
+            let edge = edges
+                .get(&Edge::new(
+                    node.label().clone(),
+                    neighbor.label().clone(),
+                    0,
+                ))
+                .unwrap();
+
+            let mut n = MPNode::new(neighbor.label().clone(), Some(&node));
+
+            n.increase_min(edge.weight());
+
+            queue.push_back(n);
+        }
+    }
+
+    max_pressure
+}
+
+#[derive(Debug, Eq, Ord)]
+struct MPNode {
+    label: String,
+    minutes: usize,
+    visited: Vec<String>,
+    valve_opened: Vec<(usize, usize)>,
+}
+
+impl MPNode {
+    fn new(label: String, other: Option<&MPNode>) -> Self {
+        match other {
+            Some(other) => Self {
+                label,
+                minutes: other.minutes,
+                visited: other.visited.clone(),
+                valve_opened: other.valve_opened.clone(),
+            },
+            None => Self {
+                label,
+                minutes: 0,
+                visited: Vec::new(),
+                valve_opened: Vec::new(),
+            },
+        }
+    }
+
+    fn label(&self) -> &String {
+        &self.label
+    }
+
+    fn minutes(&self) -> usize {
+        self.minutes
+    }
+
+    fn visited(&self) -> &Vec<String> {
+        &self.visited
+    }
+
+    fn visit(&mut self) {
+        self.visited.push(self.label.clone())
+    }
+
+    fn open_valve(&mut self, pression: usize) {
+        self.valve_opened.push((self.minutes, pression))
+    }
+
+    fn increase_min(&mut self, min: usize) {
+        self.minutes += min
+    }
+
+    fn pression(&self) -> usize {
+        self.current_pression(30)
+    }
+
+    fn current_pression(&self, minutes: usize) -> usize {
+        let mut pression = 0;
+        for (min, p) in &self.valve_opened {
+            pression += p * (minutes - *min as usize);
+        }
+        pression
+    }
+}
+
+impl PartialEq for MPNode {
+    fn eq(&self, other: &Self) -> bool {
+        self.pression() == other.pression()
+    }
+}
+
+impl PartialOrd for MPNode {
+    fn lt(&self, other: &Self) -> bool {
+        self.pression() < other.pression()
+    }
+
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 fn write_graph(path: &str, edges: &HashSet<Edge>) -> Result<(), Box<dyn Error>> {
     let mut dot_file = OpenOptions::new()
         .write(true)
@@ -354,71 +497,6 @@ impl Hash for Edge {
             self.b.hash(state);
             self.a.hash(state);
         }
-    }
-}
-
-// BFSNode
-
-#[derive(Debug, Clone)]
-struct BFSNode {
-    label: String,
-    valves_open: Vec<(String, usize, u32)>,
-    minutes: u32,
-}
-
-impl BFSNode {
-    fn new(label: String, node: Option<&BFSNode>) -> Self {
-        match node {
-            None => BFSNode {
-                label,
-                valves_open: Vec::new(),
-                minutes: 0,
-            },
-            Some(node) => BFSNode {
-                label,
-                valves_open: node.valves_open.clone(),
-                minutes: node.minutes,
-            },
-        }
-    }
-
-    fn open_valve(&mut self, pression: usize) -> &mut Self {
-        self.valves_open
-            .push((self.label.clone(), pression, self.minutes));
-        self
-    }
-
-    fn valves_open(&self) -> usize {
-        self.valves_open.len()
-    }
-
-    fn label(&self) -> &String {
-        &self.label
-    }
-
-    fn minutes(&self) -> u32 {
-        self.minutes
-    }
-
-    fn increase_min(&mut self, number: u32) -> &mut Self {
-        self.minutes += number;
-        self
-    }
-
-    fn is_valve_opened(&self, valve: &String) -> bool {
-        self.valves_open.iter().any(|v| v.0 == *valve)
-    }
-
-    fn pression(&self) -> usize {
-        self.current_pression(30)
-    }
-
-    fn current_pression(&self, minutes: usize) -> usize {
-        let mut pression = 0;
-        for (_, p, min) in &self.valves_open {
-            pression += p * (minutes - *min as usize);
-        }
-        pression
     }
 }
 
