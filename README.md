@@ -25,7 +25,7 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
 - [x] Day 14: Regolith Reservoir
 - [x] Day 15: Beacon Exclusion Zone
 - [ ] Day 16: Proboscidea Volcanium
-    - [ ] Part One
+    - [x] Part One
     - [ ] Part Two
 - [ ] Day 17: Pyroclastic Flow
     - [ ] Part One
