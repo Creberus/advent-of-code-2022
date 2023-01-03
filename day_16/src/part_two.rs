@@ -44,9 +44,13 @@ pub fn main_p2() -> Result<(), Box<dyn Error>> {
     // We need to brute force and test every possibilities but this shouldn't take too long thanks
     // to previus steps.
 
-    let possible_paths = find_most_pressure(&nodes, &edges);
+    let mut possible_paths = find_most_pressure(&nodes, &edges);
 
     println!("Number of paths: {}", possible_paths.len());
+
+    possible_paths.sort_by(|a, b| compute_pression(b, 26).cmp(&compute_pression(a, 26)));
+
+    println!("Possible paths has been sorted");
 
     let total_paths = possible_paths.len();
     let mut current_path = 0;
@@ -58,7 +62,11 @@ pub fn main_p2() -> Result<(), Box<dyn Error>> {
         if let Some(path) = paths_it.next() {
             let mut next_path = paths_it.clone();
 
-            print!("Remaining: {}/{}\r", current_path, total_paths);
+            print!(
+                "Max pression: {} | Remaining: {}/{}\r",
+                max_pression, current_path, total_paths
+            );
+            std::io::stdout().flush().unwrap();
 
             loop {
                 if let Some(next_path) = next_path.next() {
@@ -80,6 +88,14 @@ pub fn main_p2() -> Result<(), Box<dyn Error>> {
     println!("Max pression: {}", max_pression);
 
     Ok(())
+}
+
+fn compute_pression(path: &Vec<(String, usize, usize)>, minutes: usize) -> usize {
+    let mut pression = 0;
+    for (_, min, p) in path {
+        pression += p * (minutes - *min as usize);
+    }
+    pression
 }
 
 fn combine_paths(
@@ -129,15 +145,10 @@ fn combine_paths(
         minutes += 1;
     }
 
-    let mut pression = 0;
-    for (_, min, p) in &new_path {
-        pression += p * (26 - *min as usize);
-    }
-
     if error {
         None
     } else {
-        Some(pression)
+        Some(compute_pression(&new_path, 26))
     }
 }
 
