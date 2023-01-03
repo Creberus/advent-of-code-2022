@@ -46,10 +46,10 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
 - [ ] Day 23: Unstable Diffusion
     - [ ] Part One
     - [ ] Part Two
-- [ ] Day 24: xxx
+- [ ] Day 24: Blizzard Basin
     - [ ] Part One
     - [ ] Part Two
-- [ ] Day 25: xxx
+- [ ] Day 25: Full of Hot Air
     - [ ] Part One
     - [ ] Part Two
 ...
