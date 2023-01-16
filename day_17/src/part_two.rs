@@ -7,7 +7,7 @@ use std::ops::Add;
 // Where 0 is air and 1 is a rock/wall/ground
 // This will take less memory overall but is harder to implement
 
-pub fn main_p1() -> Result<(), Box<dyn Error>> {
+pub fn main_p2() -> Result<(), Box<dyn Error>> {
     let lines = io::stdin().lines();
 
     let mut movements = Vec::new();
@@ -20,8 +20,6 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         chars.for_each(|c| movements.push(Movement::from(c)))
     }
 
-    let mut rocks = HashSet::<Position>::new();
-    let mut map = Map::new();
     let shapes_order = vec![
         ShapeType::HorizontalLine,
         ShapeType::Cross,
@@ -30,65 +28,114 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         ShapeType::Square,
     ];
 
-    // Add the ground
-    for x in 1..=7 {
-        rocks.insert(Position::new(x, 0));
-    }
+    let mut highest_position: f64 = 0.;
 
-    let mut movement_index = 0;
+    for i in 0..1 {
+        let mut rocks = HashSet::<Position>::new();
+        let mut map = Map::new();
 
-    for shape_index in 0..1_000_000_000_000 {
-        print!("Shape n°{}/1_000_000_000_000\r", shape_index);
-
-        // Get the current shape
-        let shape_type = shapes_order[shape_index % shapes_order.len()];
-        let mut shape = Shape::from(shape_type);
-
-        // Spawn the shape at the good position
-        let mut highest_position = map.highest_position();
-        highest_position += 4;
-
-        *shape.global_pos_mut().x_mut() += 3;
-        *shape.global_pos_mut().y_mut() = highest_position;
-
-        let mut come_to_rest = false;
-
-        // Start the logic loop
-        while !come_to_rest {
-            // Apply jet of hot gas
-            let jet_hot_gas = movements[movement_index % movements.len()];
-            movement_index += 1;
-
-            match jet_hot_gas {
-                Movement::Left => {
-                    if can_push_left(&shape, &map, &rocks) {
-                        *shape.global_pos_mut().x_mut() -= 1
-                    }
-                }
-                Movement::Right => {
-                    if can_push_right(&shape, &map, &rocks) {
-                        *shape.global_pos_mut().x_mut() += 1
-                    }
-                }
-            }
-
-            // Fall one unit down
-            if can_fall_one(&shape, &map, &rocks) {
-                *shape.global_pos_mut().y_mut() -= 1;
-            } else {
-                // Add shape to rocks
-                rocks.extend(shape.rocks().iter());
-                come_to_rest = true;
-                let highest_position = shape.rocks().iter().max_by_key(|r| r.y()).unwrap().y();
-                if highest_position > map.highest_position() {
-                    *map.highest_position_mut() = highest_position;
-                }
-            }
+        // Add the ground
+        for x in 1..=7 {
+            rocks.insert(Position::new(x, 0));
         }
+
+        let mut movement_index = 0;
+
+        for shape_index in 0..(41 * 5) {
+            print!("Shape n°{}/{}\r", shape_index, i * 50640);
+
+            // Get the current shape
+            let shape_type = shapes_order[shape_index % shapes_order.len()];
+            let mut shape = Shape::from(shape_type);
+
+            // Spawn the shape at the good position
+            let mut highest_position = map.highest_position();
+            highest_position += 4;
+
+            *shape.global_pos_mut().x_mut() += 3;
+            *shape.global_pos_mut().y_mut() = highest_position;
+
+            let mut come_to_rest = false;
+
+            // Start the logic loop
+            while !come_to_rest {
+                // Apply jet of hot gas
+                let jet_hot_gas = movements[movement_index % movements.len()];
+                movement_index += 1;
+
+                match jet_hot_gas {
+                    Movement::Left => {
+                        if can_push_left(&shape, &map, &rocks) {
+                            *shape.global_pos_mut().x_mut() -= 1
+                        }
+                    }
+                    Movement::Right => {
+                        if can_push_right(&shape, &map, &rocks) {
+                            *shape.global_pos_mut().x_mut() += 1
+                        }
+                    }
+                }
+
+                // Fall one unit down
+                if can_fall_one(&shape, &map, &rocks) {
+                    *shape.global_pos_mut().y_mut() -= 1;
+                } else {
+                    // Add shape to rocks
+                    rocks.extend(shape.rocks().iter());
+                    come_to_rest = true;
+                    let highest_position = shape.rocks().iter().max_by_key(|r| r.y()).unwrap().y();
+                    if highest_position > map.highest_position() {
+                        *map.highest_position_mut() = highest_position;
+                    }
+                }
+            }
+
+            // Too slow
+            // Check for the last 4 rows to check if we made a Tetris.
+            // If yes, remove all the rows under it because we don't need them anymore.
+            /*if shape_index > 4 {
+                for i in 0..4 {
+                    let row = highest_position - i;
+                    let rock_in_row = rocks.iter().filter(|r| r.y() == row).count();
+                    if rock_in_row == 7 {
+                        // BOOM, Tetris for Jeff
+                        println!("BOOM, Tetris for Jeff");
+                        rocks = rocks
+                            .iter()
+                            .filter_map(|r| if r.y() >= row { Some(r.clone()) } else { None })
+                            .collect();
+                        break;
+                    }
+                }
+            }*/
+        }
+        println!(
+            "Highest position (i={}): {}",
+            41 * 5,
+            map.highest_position()
+        );
+
+        highest_position = map.highest_position as f64;
     }
 
+    let mut i: f64 = 41. * 5.;
+    let mut result: f64 = highest_position as f64;
+    while i < 1_000_000_000_000. {
+        println!("{}: {}", i, result);
+        result *= 2.;
+        i *= 2.;
+    }
+
+    i /= 2.;
+    result /= 2.;
+
+    let x = 1_000_000_000_000. / i;
+    i *= x;
+    result *= x;
+
+    println!("{}: {}", i, result);
     //println!("{:?}", rocks);
-    println!("Highest position: {}", map.highest_position());
+    //println!("Highest position: {}", map.highest_position());
 
     Ok(())
 }
