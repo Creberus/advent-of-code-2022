@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::error::Error;
 use std::io;
 
@@ -43,7 +44,40 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         blueprints.push(bp);
     }
 
-    println!("{:?}", blueprints);
+    let mut bp_contexts = Vec::<Context>::new();
+
+    for blueprint in blueprints {
+        let mut contexts = VecDeque::<Context>::new();
+        let mut best_context = Context::new();
+        contexts.push_back(Context::new());
+
+        while !contexts.is_empty() {
+            let mut ctx = contexts.pop_front().unwrap();
+
+            // 0. Check if the minutes is over 24
+            if ctx.minute() == 24 {
+                best_context = if ctx.geode() > best_context.geode() {
+                    ctx
+                } else {
+                    best_context
+                };
+
+                continue;
+            }
+
+            // 1. Start of turn
+            // You can choose to construct a robot
+
+            // 2. Collect phase
+            // Each robot collects its mineral
+            ctx.collect();
+
+            // 3. Robot have been constructed
+            // The robot you constructed at the start of the phase is finished
+        }
+
+        bp_contexts.push(best_context);
+    }
 
     Ok(())
 }
@@ -121,6 +155,91 @@ impl Default for RobotBP {
             clay: 0,
             obsidian: 0,
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum RobotType {
+    Ore,
+    Clay,
+    Obsidian,
+    Geode,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Context {
+    minute: u8,
+    // Minerals
+    ore: usize,
+    clay: usize,
+    obsidian: usize,
+    geode: usize,
+    // Robots
+    ore_robots: usize,
+    clay_robots: usize,
+    obsidian_robots: usize,
+    geode_robots: usize,
+    // Construct
+    construct_robot: bool,
+    robot_type: RobotType,
+}
+
+impl Context {
+    fn new() -> Self {
+        Self {
+            minute: 0,
+            ore: 0,
+            clay: 0,
+            obsidian: 0,
+            geode: 0,
+            ore_robots: 1,
+            clay_robots: 0,
+            obsidian_robots: 0,
+            geode_robots: 0,
+        }
+    }
+
+    fn minute(&self) -> u8 {
+        self.minute
+    }
+
+    fn minute_mut(&mut self) -> &mut u8 {
+        &mut self.minute
+    }
+
+    fn ore(&self) -> usize {
+        self.ore
+    }
+
+    fn clay(&self) -> usize {
+        self.clay
+    }
+
+    fn obsidian(&self) -> usize {
+        self.obsidian
+    }
+
+    fn geode(&self) -> usize {
+        self.geode
+    }
+
+    fn collect(&mut self) {
+        self.ore += self.ore_robots;
+        self.clay += self.clay_robots;
+        self.obsidian += self.obsidian_robots;
+        self.geode += self.geode_robots;
+    }
+
+    fn consume_ore(&mut self, consume: usize) {
+        self.ore -= consume;
+    }
+
+    fn consume_clay(&mut self, consume: usize) {
+        self.clay -= consume;
+    }
+
+    fn consume_obsidian(&mut self, consume: usize) {
+        self.obsidian -= consume;
     }
 }
 
