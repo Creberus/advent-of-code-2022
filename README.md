@@ -50,7 +50,6 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
 - [ ] Day 25: Full of Hot Air
     - [ ] Part One
     - [ ] Part Two
-...
 
 ## Link
 [AdventofCode](https://adventofcode.com/2022)
