@@ -2,6 +2,11 @@ use std::collections::HashSet;
 use std::error::Error;
 use std::io;
 
+// Position are as followed
+// x right
+// y up
+// z back
+
 pub fn main_p1() -> Result<(), Box<dyn Error>> {
     let lines = io::stdin().lines();
 
@@ -14,19 +19,54 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         positions.insert(pos);
     }
 
+    let mut surface_area: u32 = 0;
+
+    for pos in &positions {
+        let top = Position::new(pos.x(), pos.y() + 1, pos.z());
+        let bot = Position::new(pos.x(), pos.y() - 1, pos.z());
+
+        let right = Position::new(pos.x() + 1, pos.y(), pos.z());
+        let left = Position::new(pos.x() - 1, pos.y(), pos.z());
+
+        let back = Position::new(pos.x(), pos.y(), pos.z() + 1);
+        let front = Position::new(pos.x(), pos.y(), pos.z() - 1);
+
+        let neigbhors = vec![top, bot, right, left, back, front];
+
+        for neigbhor in neigbhors {
+            if !positions.contains(&neigbhor) {
+                surface_area += 1;
+            }
+        }
+    }
+
+    println!("Total Surface Area: {}", surface_area);
+
     Ok(())
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 struct Position {
-    x: u8,
-    y: u8,
-    z: u8,
+    x: i8,
+    y: i8,
+    z: i8,
 }
 
 impl Position {
-    fn new(x: u8, y: u8, z: u8) -> Self {
+    fn new(x: i8, y: i8, z: i8) -> Self {
         Self { x, y, z }
+    }
+
+    fn x(&self) -> i8 {
+        self.x
+    }
+
+    fn y(&self) -> i8 {
+        self.y
+    }
+
+    fn z(&self) -> i8 {
+        self.z
     }
 }
 
