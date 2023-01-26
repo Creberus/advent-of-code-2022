@@ -28,9 +28,7 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
 - [ ] Day 17: Pyroclastic Flow
     - [ ] Part One
     - [ ] Part Two
-- [ ] Day 18: Boiling Boulders
-    - [ ] Part One
-    - [ ] Part Two
+- [x] Day 18: Boiling Boulders
 - [ ] Day 19: Not Enough Minerals
     - [ ] Part One
     - [ ] Part Two
