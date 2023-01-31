@@ -48,9 +48,7 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
     for blueprint in blueprints {
         let mut ctx = Context::new();
 
-        let mut data = HashMap::<Context, usize>::new();
-
-        let geode_collected = process(&mut ctx, &blueprint, &mut data);
+        let geode_collected = process(&mut ctx, &blueprint);
 
         println!("Geode collected: {}", geode_collected);
     }
@@ -58,14 +56,9 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn process(ctx: &mut Context, bp: &Blueprint, data: &mut HashMap<Context, usize>) -> usize {
+fn process(ctx: &mut Context, bp: &Blueprint) -> usize {
     if ctx.minute() == 19 {
         return ctx.geode();
-    }
-
-    if let Some(value) = data.get(&ctx) {
-        println!("Optimized");
-        return *value;
     }
 
     let mut maximum = 0;
@@ -81,9 +74,7 @@ fn process(ctx: &mut Context, bp: &Blueprint, data: &mut HashMap<Context, usize>
 
         ore_ctx.construct();
 
-        let ore_max = process(&mut ore_ctx, bp, data);
-        data.insert(ore_ctx, ore_max);
-
+        let ore_max = process(&mut ore_ctx, bp);
         maximum = maximum.max(ore_max);
     }
 
@@ -98,9 +89,7 @@ fn process(ctx: &mut Context, bp: &Blueprint, data: &mut HashMap<Context, usize>
 
         clay_ctx.construct();
 
-        let clay_max = process(&mut clay_ctx, bp, data);
-        data.insert(clay_ctx, clay_max);
-
+        let clay_max = process(&mut clay_ctx, bp);
         maximum = maximum.max(clay_max);
     }
 
@@ -115,9 +104,7 @@ fn process(ctx: &mut Context, bp: &Blueprint, data: &mut HashMap<Context, usize>
 
         obsidian_ctx.construct();
 
-        let obsidian_max = process(&mut obsidian_ctx, bp, data);
-        data.insert(obsidian_ctx, obsidian_max);
-
+        let obsidian_max = process(&mut obsidian_ctx, bp);
         maximum = maximum.max(obsidian_max);
     }
 
@@ -132,9 +119,7 @@ fn process(ctx: &mut Context, bp: &Blueprint, data: &mut HashMap<Context, usize>
 
         geode_ctx.construct();
 
-        let geode_max = process(&mut geode_ctx, bp, data);
-        data.insert(geode_ctx, geode_max);
-
+        let geode_max = process(&mut geode_ctx, bp);
         maximum = maximum.max(geode_max);
     }
 
@@ -142,9 +127,7 @@ fn process(ctx: &mut Context, bp: &Blueprint, data: &mut HashMap<Context, usize>
 
     *ctx.minute_mut() += 1;
 
-    let ctx_max = process(ctx, bp, data);
-    data.insert(*ctx, ctx_max);
-
+    let ctx_max = process(ctx, bp);
     maximum = maximum.max(ctx_max);
 
     maximum
