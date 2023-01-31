@@ -51,10 +51,29 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         let mut best_context = Context::new();
         contexts.push_back(Context::new());
 
+        let robots_bp = vec![
+            (blueprint.ore_robot, RobotType::Ore),
+            (blueprint.clay_robot, RobotType::Clay),
+            (blueprint.obsidian_robot, RobotType::Obsidian),
+            (blueprint.geode_robot, RobotType::Geode),
+        ];
+
+        let mut previous_min = 0;
+
         while !contexts.is_empty() {
             let mut ctx = contexts.pop_front().unwrap();
 
-            // 0. Check if the minutes is over 24
+            if previous_min != ctx.minute() {
+                previous_min += 1;
+            }
+
+            print!(
+                "Contexts size: {} minutes {}\r",
+                contexts.len(),
+                ctx.minute()
+            );
+
+            // 0. Check if the minutes are over 24
             if ctx.minute() == 24 {
                 best_context = if ctx.geode() > best_context.geode() {
                     ctx
@@ -67,13 +86,33 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
 
             // 1. Start of turn
             // You can choose to construct a robot
+            for robot_bp in &robots_bp {
+                if can_construct(&ctx, &robot_bp.0) {
+                    let mut ctx_constructed = ctx.clone();
+
+                    construct(&mut ctx_constructed, &robot_bp.0, robot_bp.1);
+
+                    // 2. Collect phase
+                    // Each robot collects its mineral
+                    ctx_constructed.collect();
+
+                    // 3. Robot have been constructed
+                    // The robot you constructed at the start of the phase is finished
+                    ctx_constructed.construct();
+
+                    *ctx_constructed.minute_mut() += 1;
+
+                    contexts.push_back(ctx_constructed);
+                }
+            }
 
             // 2. Collect phase
             // Each robot collects its mineral
             ctx.collect();
 
-            // 3. Robot have been constructed
-            // The robot you constructed at the start of the phase is finished
+            *ctx.minute_mut() += 1;
+
+            contexts.push_back(ctx);
         }
 
         bp_contexts.push(best_context);
@@ -158,6 +197,19 @@ impl Default for RobotBP {
     }
 }
 
+fn can_construct(ctx: &Context, bp: &RobotBP) -> bool {
+    ctx.ore() >= bp.ore() && ctx.clay() >= bp.clay() && ctx.obsidian() >= bp.obsidian()
+}
+
+fn construct(ctx: &mut Context, bp: &RobotBP, rt: RobotType) {
+    ctx.consume_ore(bp.ore());
+    ctx.consume_clay(bp.clay());
+    ctx.consume_obsidian(bp.obsidian());
+
+    *ctx.construct_robot_mut() = true;
+    *ctx.construct_robot_type_mut() = rt;
+}
+
 #[derive(Debug, Clone, Copy)]
 enum RobotType {
     Ore,
@@ -196,6 +248,8 @@ impl Context {
             clay_robots: 0,
             obsidian_robots: 0,
             geode_robots: 0,
+            construct_robot: false,
+            robot_type: RobotType::Ore,
         }
     }
 
@@ -240,6 +294,26 @@ impl Context {
 
     fn consume_obsidian(&mut self, consume: usize) {
         self.obsidian -= consume;
+    }
+
+    fn construct_robot_mut(&mut self) -> &mut bool {
+        &mut self.construct_robot
+    }
+
+    fn construct_robot_type_mut(&mut self) -> &mut RobotType {
+        &mut self.robot_type
+    }
+
+    fn construct(&mut self) {
+        if self.construct_robot {
+            self.construct_robot = false;
+            match self.robot_type {
+                RobotType::Ore => self.ore_robots += 1,
+                RobotType::Clay => self.clay_robots += 1,
+                RobotType::Obsidian => self.obsidian_robots += 1,
+                RobotType::Geode => self.geode_robots += 1,
+            }
+        }
     }
 }
 
