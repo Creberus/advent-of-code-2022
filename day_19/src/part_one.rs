@@ -45,19 +45,30 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         blueprints.push(bp);
     }
 
-    for blueprint in blueprints {
+    let mut quality_levels = 0;
+
+    for blueprint in &blueprints {
+        println!("Blueprint {}/{}", blueprint.id, blueprints.len());
+
         let mut ctx = Context::new();
 
-        let geode_collected = process(&mut ctx, &blueprint);
+        let geode_collected = process(&mut ctx, blueprint);
 
-        println!("Geode collected: {}", geode_collected);
+        println!("\tGeodes: {}", geode_collected);
+
+        let quality_level = blueprint.id * geode_collected;
+        println!("\tQuality Level: {}", quality_level);
+
+        quality_levels += quality_level;
     }
+
+    println!("Final quality levels: {}", quality_levels);
 
     Ok(())
 }
 
 fn process(ctx: &mut Context, bp: &Blueprint) -> usize {
-    if ctx.minute() == 19 {
+    if ctx.minute() == 24 {
         return ctx.geode();
     }
 
