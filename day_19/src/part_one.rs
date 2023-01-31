@@ -1,5 +1,6 @@
-use std::collections::VecDeque;
+use std::collections::HashMap;
 use std::error::Error;
+use std::hash::Hash;
 use std::io;
 
 pub fn main_p1() -> Result<(), Box<dyn Error>> {
@@ -44,81 +45,109 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         blueprints.push(bp);
     }
 
-    let mut bp_contexts = Vec::<Context>::new();
-
     for blueprint in blueprints {
-        let mut contexts = VecDeque::<Context>::new();
-        let mut best_context = Context::new();
-        contexts.push_back(Context::new());
+        let mut ctx = Context::new();
 
-        let robots_bp = vec![
-            (blueprint.ore_robot, RobotType::Ore),
-            (blueprint.clay_robot, RobotType::Clay),
-            (blueprint.obsidian_robot, RobotType::Obsidian),
-            (blueprint.geode_robot, RobotType::Geode),
-        ];
+        let mut data = HashMap::<Context, usize>::new();
 
-        let mut previous_min = 0;
+        let geode_collected = process(&mut ctx, &blueprint, &mut data);
 
-        while !contexts.is_empty() {
-            let mut ctx = contexts.pop_front().unwrap();
-
-            if previous_min != ctx.minute() {
-                previous_min += 1;
-            }
-
-            print!(
-                "Contexts size: {} minutes {}\r",
-                contexts.len(),
-                ctx.minute()
-            );
-
-            // 0. Check if the minutes are over 24
-            if ctx.minute() == 24 {
-                best_context = if ctx.geode() > best_context.geode() {
-                    ctx
-                } else {
-                    best_context
-                };
-
-                continue;
-            }
-
-            // 1. Start of turn
-            // You can choose to construct a robot
-            for robot_bp in &robots_bp {
-                if can_construct(&ctx, &robot_bp.0) {
-                    let mut ctx_constructed = ctx.clone();
-
-                    construct(&mut ctx_constructed, &robot_bp.0, robot_bp.1);
-
-                    // 2. Collect phase
-                    // Each robot collects its mineral
-                    ctx_constructed.collect();
-
-                    // 3. Robot have been constructed
-                    // The robot you constructed at the start of the phase is finished
-                    ctx_constructed.construct();
-
-                    *ctx_constructed.minute_mut() += 1;
-
-                    contexts.push_back(ctx_constructed);
-                }
-            }
-
-            // 2. Collect phase
-            // Each robot collects its mineral
-            ctx.collect();
-
-            *ctx.minute_mut() += 1;
-
-            contexts.push_back(ctx);
-        }
-
-        bp_contexts.push(best_context);
+        println!("Geode collected: {}", geode_collected);
     }
 
     Ok(())
+}
+
+fn process(ctx: &mut Context, bp: &Blueprint, data: &mut HashMap<Context, usize>) -> usize {
+    if ctx.minute() == 19 {
+        return ctx.geode();
+    }
+
+    if let Some(value) = data.get(&ctx) {
+        println!("Optimized");
+        return *value;
+    }
+
+    let mut maximum = 0;
+
+    if can_construct(&ctx, &bp.ore_robot) {
+        let mut ore_ctx = ctx.clone();
+
+        construct(&mut ore_ctx, &bp.ore_robot, RobotType::Ore);
+
+        ore_ctx.collect();
+
+        *ore_ctx.minute_mut() += 1;
+
+        ore_ctx.construct();
+
+        let ore_max = process(&mut ore_ctx, bp, data);
+        data.insert(ore_ctx, ore_max);
+
+        maximum = maximum.max(ore_max);
+    }
+
+    if can_construct(&ctx, &bp.clay_robot) {
+        let mut clay_ctx = ctx.clone();
+
+        construct(&mut clay_ctx, &bp.clay_robot, RobotType::Clay);
+
+        clay_ctx.collect();
+
+        *clay_ctx.minute_mut() += 1;
+
+        clay_ctx.construct();
+
+        let clay_max = process(&mut clay_ctx, bp, data);
+        data.insert(clay_ctx, clay_max);
+
+        maximum = maximum.max(clay_max);
+    }
+
+    if can_construct(&ctx, &bp.obsidian_robot) {
+        let mut obsidian_ctx = ctx.clone();
+
+        construct(&mut obsidian_ctx, &bp.obsidian_robot, RobotType::Obsidian);
+
+        obsidian_ctx.collect();
+
+        *obsidian_ctx.minute_mut() += 1;
+
+        obsidian_ctx.construct();
+
+        let obsidian_max = process(&mut obsidian_ctx, bp, data);
+        data.insert(obsidian_ctx, obsidian_max);
+
+        maximum = maximum.max(obsidian_max);
+    }
+
+    if can_construct(&ctx, &bp.geode_robot) {
+        let mut geode_ctx = ctx.clone();
+
+        construct(&mut geode_ctx, &bp.geode_robot, RobotType::Geode);
+
+        geode_ctx.collect();
+
+        *geode_ctx.minute_mut() += 1;
+
+        geode_ctx.construct();
+
+        let geode_max = process(&mut geode_ctx, bp, data);
+        data.insert(geode_ctx, geode_max);
+
+        maximum = maximum.max(geode_max);
+    }
+
+    ctx.collect();
+
+    *ctx.minute_mut() += 1;
+
+    let ctx_max = process(ctx, bp, data);
+    data.insert(*ctx, ctx_max);
+
+    maximum = maximum.max(ctx_max);
+
+    maximum
 }
 
 #[derive(Debug)]
@@ -210,7 +239,7 @@ fn construct(ctx: &mut Context, bp: &RobotBP, rt: RobotType) {
     *ctx.construct_robot_type_mut() = rt;
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RobotType {
     Ore,
     Clay,
@@ -218,7 +247,7 @@ enum RobotType {
     Geode,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq)]
 struct Context {
     minute: u8,
     // Minerals
@@ -314,6 +343,34 @@ impl Context {
                 RobotType::Geode => self.geode_robots += 1,
             }
         }
+    }
+}
+
+impl PartialEq for Context {
+    fn eq(&self, other: &Self) -> bool {
+        self.minute == other.minute
+            && self.ore == other.ore
+            && self.clay == other.clay
+            && self.obsidian == other.obsidian
+            && self.geode == other.geode
+            && self.ore_robots == other.ore_robots
+            && self.clay_robots == other.clay_robots
+            && self.obsidian_robots == other.obsidian_robots
+            && self.geode_robots == other.geode_robots
+    }
+}
+
+impl Hash for Context {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.minute.hash(state);
+        self.ore.hash(state);
+        self.clay.hash(state);
+        self.obsidian.hash(state);
+        self.geode.hash(state);
+        self.ore_robots.hash(state);
+        self.clay_robots.hash(state);
+        self.obsidian_robots.hash(state);
+        self.geode_robots.hash(state);
     }
 }
 
