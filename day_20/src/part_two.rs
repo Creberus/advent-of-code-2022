@@ -4,21 +4,27 @@ use std::io;
 pub fn main_p2() -> Result<(), Box<dyn Error>> {
     let lines = io::stdin().lines();
 
-    let mut numbers = Vec::<(i32, bool)>::new();
+    let decryption_key = 811_589_153;
+    let mut numbers = Vec::<i64>::new();
 
     for line in lines {
         let line = line.unwrap();
 
-        numbers.push((line.parse().unwrap(), false));
+        numbers.push(line.parse().unwrap());
     }
 
-    let instructions = numbers.clone();
+    let mut numbers = apply_encryption_key(numbers, decryption_key);
 
-    for instruction in &instructions {
-        apply_instruction(instruction.0, &mut numbers);
+    println!("Initial arrangement:\n{:?}", numbers);
+
+    for round in 1..11 {
+        for instruction in 0..numbers.len() {
+            apply_instruction(instruction, &mut numbers);
+        }
+        println!("After {} rounds of mixing:\n{:?}", round, numbers);
     }
 
-    let (index, _) = numbers.iter().enumerate().find(|&n| (*n.1).0 == 0).unwrap();
+    let (index, _) = numbers.iter().enumerate().find(|&n| (*n.1).1 == 0).unwrap();
 
     let index_1000 = (index + 1000) % numbers.len();
     let index_2000 = (index + 2000) % numbers.len();
@@ -30,70 +36,63 @@ pub fn main_p2() -> Result<(), Box<dyn Error>> {
 
     println!(
         "1000 {} 2000 {} 3000 {}",
-        number_1000.0, number_2000.0, number_3000.0
+        number_1000.1, number_2000.1, number_3000.1
     );
-    println!("Sum: {}", number_1000.0 + number_2000.0 + number_3000.0);
+    println!("Sum: {}", number_1000.1 + number_2000.1 + number_3000.1);
 
     Ok(())
 }
 
-fn apply_instruction(instruction: i32, numbers: &mut Vec<(i32, bool)>) {
+fn apply_instruction(instruction: usize, numbers: &mut Vec<(usize, i64)>) {
     // 1. Find the number in the array as well as the index
-    let (index, _) = numbers
+    let (index, number) = numbers
         .iter()
         .enumerate()
-        .find(|&n| !(*n.1).1 && (*n.1).0 == instruction)
+        .find(|&n| (n.1).0 == instruction)
         .unwrap();
+
+    let number = number.1;
 
     numbers.remove(index);
 
-    let mut new_index = index as i32 + instruction;
+    let mut new_index = index as i64 + number;
 
-    new_index %= numbers.len() as i32;
+    new_index %= numbers.len() as i64;
 
     if new_index <= 0 {
-        new_index += numbers.len() as i32;
+        new_index += numbers.len() as i64;
     }
 
     assert!(new_index > 0);
-    numbers.insert(new_index as usize, (instruction, true));
+    numbers.insert(new_index as usize, (instruction, number));
+}
+
+fn apply_encryption_key(arr: Vec<i64>, decryption_key: i64) -> Vec<(usize, i64)> {
+    arr.iter()
+        .enumerate()
+        .map(|n| (n.0, n.1 * decryption_key))
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /*
+    static DECRYPTION_KEY: i64 = 811_589_153;
+
     #[test]
     fn simple() {
         let mut numbers = vec![1, 2, -3, 3, -2, 0, 4];
+        let mut numbers = apply_encryption_key(numbers, DECRYPTION_KEY);
 
-        apply_instruction(1, &mut numbers);
-        assert_eq!(numbers, vec![2, 1, -3, 3, -2, 0, 4]);
-
-        apply_instruction(2, &mut numbers);
-        assert_eq!(numbers, vec![1, -3, 2, 3, -2, 0, 4]);
-
-        apply_instruction(-3, &mut numbers);
-        assert_eq!(numbers, vec![1, 2, 3, -2, -3, 0, 4]);
-
-        apply_instruction(3, &mut numbers);
-        assert_eq!(numbers, vec![1, 2, -2, -3, 0, 3, 4]);
-
-        apply_instruction(-2, &mut numbers);
-        assert_eq!(numbers, vec![1, 2, -3, 0, 3, 4, -2]);
-
-        apply_instruction(0, &mut numbers);
-        assert_eq!(numbers, vec![1, 2, -3, 0, 3, 4, -2]);
-
-        apply_instruction(4, &mut numbers);
-        assert_eq!(numbers, vec![1, 2, -3, 4, 0, 3, -2]);
+        for instruction in 1..numbers.len() {}
     }
 
+    /*
     #[test]
     fn zero() {
         let mut numbers = vec![1, 2, -3, 3, -2, 0, 4];
-        let size = numbers.len() as i32;
+        let mut numbers = apply_encryption_key(numbers, decryption_key)
 
         apply_instruction(0, &mut numbers);
 

@@ -32,9 +32,7 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
 - [ ] Day 19: Not Enough Minerals
     - [ ] Part One
     - [ ] Part Two
-- [ ] Day 20: Grove Positioning System
-    - [x] Part One
-    - [ ] Part Two
+- [x] Day 20: Grove Positioning System
 - [ ] Day 21: Monkey Math
     - [ ] Part One
     - [ ] Part Two
