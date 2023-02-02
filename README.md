@@ -1,10 +1,11 @@
-# AdventofCode 2022
+# AdventofCode
 
 ## Description
 
 This repo contains all the gifts from AdventofCode 2022.
 
-For this fun event, I've decided to make all the exercices in Rust.
+For this event, I've decided to make all the exercices in **Rust**.
+
 The choice of Rust is purely to improve my skills and to learn new things, as well as having fun with it.
 
 ## Completion
@@ -48,7 +49,7 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
     - [ ] Part Two
 
 ## Link
-[AdventofCode](https://adventofcode.com/2022)
+[AdventofCode](https://adventofcode.com)
 
 ## Author
 Creberus <creberus@tutanota.com>
