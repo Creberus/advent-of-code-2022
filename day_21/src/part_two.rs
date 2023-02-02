@@ -39,7 +39,23 @@ pub fn main_p2() -> Result<(), Box<dyn Error>> {
 
     let tree_expr = build_expr_tree(String::from("root"), &monkeys);
 
-    println!("Tree Expr: {}", tree_expr);
+    println!("Tree Expr (before reduction): {}", tree_expr);
+
+    let tree_expr = reduce_tree(tree_expr);
+
+    println!("Tree Expr (after reduction): {}", tree_expr);
+
+    let (value, path) = match tree_expr {
+        TreeExpr::Root(l, r) => match (*l, *r) {
+            (expr, TreeExpr::Number(value)) | (TreeExpr::Number(value), expr) => (value, expr),
+            (_, _) => panic!("Error: Root malformed"),
+        },
+        _ => panic!("Root is malformed"),
+    };
+
+    let result = compute_variable(path, value);
+
+    println!("The variable should be: {}", result);
 
     Ok(())
 }
@@ -163,10 +179,208 @@ fn build_expr_tree(monkey: String, monkeys: &HashMap<String, Expression>) -> Tre
     }
 }
 
+fn reduce_tree(expr: TreeExpr) -> TreeExpr {
+    match expr {
+        TreeExpr::Operation(l, op, r) => {
+            let l = reduce_tree(*l);
+            let r = reduce_tree(*r);
+
+            match (l, r) {
+                (TreeExpr::Number(lvalue), TreeExpr::Number(rvalue)) => match op {
+                    Operator::Plus => TreeExpr::Number(lvalue + rvalue),
+                    Operator::Minus => TreeExpr::Number(lvalue - rvalue),
+                    Operator::Mul => TreeExpr::Number(lvalue * rvalue),
+                    Operator::Div => TreeExpr::Number(lvalue / rvalue),
+                },
+                (l, r) => TreeExpr::Operation(Box::new(l), op, Box::new(r)),
+            }
+        }
+        TreeExpr::Root(l, r) => {
+            let l = reduce_tree(*l);
+            let r = reduce_tree(*r);
+
+            TreeExpr::Root(Box::new(l), Box::new(r))
+        }
+        expr => expr,
+    }
+}
+
+fn compute_variable(expr: TreeExpr, mut value: i64) -> i64 {
+    match expr {
+        TreeExpr::Operation(l, op, r) => match op {
+            Operator::Plus => match (*l, *r) {
+                (TreeExpr::Number(v), expr) | (expr, TreeExpr::Number(v)) => {
+                    value -= v;
+                    compute_variable(expr, value)
+                }
+                (_, _) => panic!(),
+            },
+            Operator::Minus => match (*l, *r) {
+                (TreeExpr::Number(v), expr) => {
+                    value = -(value - v);
+                    compute_variable(expr, value)
+                }
+                (expr, TreeExpr::Number(v)) => {
+                    value += v;
+                    compute_variable(expr, value)
+                }
+                (_, _) => panic!(),
+            },
+            Operator::Mul => match (*l, *r) {
+                (TreeExpr::Number(v), expr) | (expr, TreeExpr::Number(v)) => {
+                    value /= v;
+                    compute_variable(expr, value)
+                }
+                (_, _) => panic!(),
+            },
+            Operator::Div => match (*l, *r) {
+                (TreeExpr::Number(v), expr) => {
+                    value /= v;
+                    compute_variable(expr, value)
+                }
+                (expr, TreeExpr::Number(v)) => {
+                    value *= v;
+                    compute_variable(expr, value)
+                }
+                (_, _) => panic!(),
+            },
+        },
+        TreeExpr::Number(_) => value,
+        TreeExpr::Variable() => value,
+        _ => panic!("Tree Expr shouldn't be reached"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn simple() {}
+    fn addition_left() {
+        let tree = TreeExpr::Operation(
+            Box::new(TreeExpr::Variable()),
+            Operator::Plus,
+            Box::new(TreeExpr::Number(15)),
+        );
+
+        let result = compute_variable(tree, 150);
+
+        assert_eq!(result, 135);
+    }
+
+    #[test]
+    fn addition_right() {
+        let tree = TreeExpr::Operation(
+            Box::new(TreeExpr::Number(20)),
+            Operator::Plus,
+            Box::new(TreeExpr::Variable()),
+        );
+
+        let result = compute_variable(tree, 150);
+
+        assert_eq!(result, 130);
+    }
+
+    #[test]
+    fn additions() {
+        let tree = TreeExpr::Operation(
+            Box::new(TreeExpr::Operation(
+                Box::new(TreeExpr::Number(10)),
+                Operator::Plus,
+                Box::new(TreeExpr::Variable()),
+            )),
+            Operator::Plus,
+            Box::new(TreeExpr::Number(10)),
+        );
+
+        let result = compute_variable(tree, 150);
+
+        assert_eq!(result, 130);
+    }
+
+    #[test]
+    fn multiplication_left() {
+        let tree = TreeExpr::Operation(
+            Box::new(TreeExpr::Variable()),
+            Operator::Mul,
+            Box::new(TreeExpr::Number(15)),
+        );
+
+        let result = compute_variable(tree, 150);
+
+        assert_eq!(result, 10);
+    }
+
+    #[test]
+    fn multiplication_right() {
+        let tree = TreeExpr::Operation(
+            Box::new(TreeExpr::Number(15)),
+            Operator::Mul,
+            Box::new(TreeExpr::Variable()),
+        );
+
+        let result = compute_variable(tree, 150);
+
+        assert_eq!(result, 10);
+    }
+
+    #[test]
+    fn multiplications() {
+        let tree = TreeExpr::Operation(
+            Box::new(TreeExpr::Operation(
+                Box::new(TreeExpr::Number(10)),
+                Operator::Mul,
+                Box::new(TreeExpr::Variable()),
+            )),
+            Operator::Mul,
+            Box::new(TreeExpr::Number(10)),
+        );
+
+        let result = compute_variable(tree, 200);
+
+        assert_eq!(result, 2);
+    }
+
+    #[test]
+    fn substraction_left() {
+        let tree = TreeExpr::Operation(
+            Box::new(TreeExpr::Variable()),
+            Operator::Minus,
+            Box::new(TreeExpr::Number(15)),
+        );
+
+        let result = compute_variable(tree, 150);
+
+        assert_eq!(result, 165);
+    }
+
+    #[test]
+    fn substraction_right() {
+        let tree = TreeExpr::Operation(
+            Box::new(TreeExpr::Number(15)),
+            Operator::Minus,
+            Box::new(TreeExpr::Variable()),
+        );
+
+        let result = compute_variable(tree, 150);
+
+        assert_eq!(result, -135);
+    }
+
+    #[test]
+    fn substractions() {
+        let tree = TreeExpr::Operation(
+            Box::new(TreeExpr::Operation(
+                Box::new(TreeExpr::Number(10)),
+                Operator::Minus,
+                Box::new(TreeExpr::Variable()),
+            )),
+            Operator::Minus,
+            Box::new(TreeExpr::Number(10)),
+        );
+
+        let result = compute_variable(tree, 200);
+
+        assert_eq!(result, -200);
+    }
 }
