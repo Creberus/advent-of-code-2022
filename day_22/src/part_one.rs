@@ -15,7 +15,7 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
     while !line.is_empty() {
         for (idx, c) in line.chars().enumerate() {
             if let Ok(point_type) = PointType::try_from(c) {
-                grid.insert(Point::new(idx as u32, row), point_type);
+                grid.insert(Point::new((idx + 1) as u32, row), point_type);
             }
         }
 
@@ -42,6 +42,111 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
         }
     }
 
+    let (starting_point, sp_type) = grid
+        .iter()
+        .filter(|p| p.0.y() == 1)
+        .min_by_key(|p| p.0.x())
+        .unwrap();
+
+    assert_eq!(*sp_type, PointType::Floor);
+
+    let mut facing = Facing::Right;
+    let mut current_point = *starting_point;
+
+    for m in moves {
+        match m {
+            Move::Moving(mut value) => {
+                while value > 0 {
+                    let mut next_position = match facing {
+                        Facing::Up => Point::new(current_point.x(), current_point.y() - 1),
+                        Facing::Right => Point::new(current_point.x() + 1, current_point.y()),
+                        Facing::Down => Point::new(current_point.x(), current_point.y() + 1),
+                        Facing::Left => Point::new(current_point.x() - 1, current_point.y()),
+                    };
+
+                    if let Some(next_point) = grid.get(&next_position) {
+                        match next_point {
+                            PointType::Floor => (),
+                            PointType::Wall => break,
+                        }
+                    } else {
+                        // Find the point to the opposite side
+                        let opposite_pos = match facing {
+                            Facing::Up => {
+                                let mut back_pos =
+                                    Point::new(current_point.x(), current_point.y() + 1);
+                                while let Some(_) = grid.get(&back_pos) {
+                                    back_pos = Point::new(back_pos.x(), back_pos.y() + 1);
+                                }
+
+                                Point::new(back_pos.x(), back_pos.y() - 1)
+                            }
+                            Facing::Right => {
+                                let mut back_pos =
+                                    Point::new(current_point.x() - 1, current_point.y());
+                                while let Some(_) = grid.get(&back_pos) {
+                                    back_pos = Point::new(back_pos.x() - 1, back_pos.y());
+                                }
+
+                                Point::new(back_pos.x() + 1, back_pos.y())
+                            }
+                            Facing::Down => {
+                                let mut back_pos =
+                                    Point::new(current_point.x(), current_point.y() - 1);
+                                while let Some(_) = grid.get(&back_pos) {
+                                    back_pos = Point::new(back_pos.x(), back_pos.y() - 1);
+                                }
+                                Point::new(back_pos.x(), back_pos.y() + 1)
+                            }
+                            Facing::Left => {
+                                let mut back_pos =
+                                    Point::new(current_point.x() + 1, current_point.y());
+                                while let Some(_) = grid.get(&back_pos) {
+                                    back_pos = Point::new(back_pos.x() + 1, back_pos.y());
+                                }
+                                Point::new(back_pos.x() - 1, back_pos.y())
+                            }
+                        };
+
+                        let pt = *grid.get(&opposite_pos).unwrap();
+
+                        if pt == PointType::Floor {
+                            next_position = opposite_pos;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    current_point = next_position;
+                    value -= 1;
+                }
+            }
+            Move::Turning(dir) => {
+                facing = match dir {
+                    Direction::Clockwise => match facing {
+                        Facing::Up => Facing::Right,
+                        Facing::Right => Facing::Down,
+                        Facing::Down => Facing::Left,
+                        Facing::Left => Facing::Up,
+                    },
+                    Direction::CounterClockwise => match facing {
+                        Facing::Up => Facing::Left,
+                        Facing::Right => Facing::Up,
+                        Facing::Down => Facing::Right,
+                        Facing::Left => Facing::Down,
+                    },
+                }
+            }
+        }
+    }
+
+    println!("Facing {:?} at {:?}", facing, current_point);
+
+    println!(
+        "Final Password: {}",
+        1000 * current_point.y() + 4 * current_point.x() + facing as u32
+    );
+
     Ok(())
 }
 
@@ -65,7 +170,7 @@ impl Point {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PointType {
     Wall,
     Floor,
@@ -83,7 +188,7 @@ impl TryFrom<char> for PointType {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Facing {
     Right = 0,
     Down = 1,
