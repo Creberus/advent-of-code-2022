@@ -36,7 +36,7 @@ The choice of Rust is purely to improve my skills and to learn new things, as we
 - [x] Day 20: Grove Positioning System
 - [x] Day 21: Monkey Math
 - [ ] Day 22: Monkey Map
-    - [ ] Part One
+    - [x] Part One
     - [ ] Part Two
 - [ ] Day 23: Unstable Diffusion
     - [ ] Part One
