@@ -57,6 +57,8 @@ pub fn main_p1() -> Result<(), Box<dyn Error>> {
                         };
 
                         propositions.insert(position, value + 1);
+
+                        break;
                     }
                 }
             }
